@@ -114,6 +114,32 @@ def validation(model:LeNet5|nn.Module,
             metric.add(accuracy(predicts, targets), targets.numel())
     return metric[0]/metric[1]        
 
+def visualization(model:LeNet5|torch.Module,
+                  dataset:DataLoader):
+    import matplotlib.pyplot as plt
+
+    print("\n--- Visualizing Predictions ---")
+    model.eval()
+    
+    checkout_batch_size = 10
+    checkout_loader = DataLoader(dataset, batch_size=checkout_batch_size, shuffle=True)
+    images, labels = next(iter(checkout_loader))
+    
+    with torch.no_grad():
+        outputs = model(images.to(device))
+        preds = outputs.argmax(dim=1).cpu()
+
+    plt.figure(figsize=(12, 5))
+    for i in range(checkout_batch_size):
+        plt.subplot(2, 5, i + 1)
+        plt.imshow(images[i].squeeze(), cmap='gray')
+        color = 'green' if preds[i] == labels[i] else 'red'
+        plt.title(f"Pred: {preds[i]}\nActual: {labels[i]}", color=color)
+        plt.axis('off')
+    
+    plt.tight_layout()
+    plt.show()
+
 def main():
     # dataloader
     train_dataset, test_dataset = dataset.load_from_MNIST(resize=32) # input feature of LeNet-5 is 32x32
@@ -159,6 +185,8 @@ def main():
         print("Targets: ", targets[8:])
         break
         
+    # matplotlib
+    visualization(model, test_dataset)
 
 if __name__ == "__main__":
     main()
