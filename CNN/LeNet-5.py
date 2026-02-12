@@ -114,7 +114,7 @@ def validation(model:LeNet5|nn.Module,
             metric.add(accuracy(predicts, targets), targets.numel())
     return metric[0]/metric[1]        
 
-def visualization(model:LeNet5|torch.Module,
+def visualization(model:LeNet5|nn.Module,
                   dataset:DataLoader):
     import matplotlib.pyplot as plt
 
