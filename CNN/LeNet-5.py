@@ -1,5 +1,6 @@
 import dataset
 import torch
+import utils
 from utils.metric import Accumulator
 from torch.utils.data import DataLoader
 from torch import nn
@@ -8,6 +9,9 @@ from torch import nn
 BATCH_SIZE = 64
 LEARNING_RATE = 0.2
 NUM_EPOCHS = 50
+
+# CUDA
+device = utils.check_CUDA_available()
 
 class LeNet5(nn.Module):
     """
@@ -75,6 +79,9 @@ def train_one_epoch(model:LeNet5|nn.Module,
         # deduce type explicitly
         inputs:torch.Tensor
         targets:torch.Tensor
+
+        inputs = inputs.to(device)
+        targets = targets.to(device)
         
         optimizer.zero_grad()
         predicts            = model(inputs)
@@ -97,10 +104,12 @@ def validation(model:LeNet5|nn.Module,
         inputs:torch.Tensor
         targets:torch.Tensor
         
+        inputs = inputs.to(device)
+        targets = targets.to(device)
+        
         predicts = model(inputs)
         metric.add(accuracy(predicts, targets), targets.numel())
-    return metric[0]/metric[1]
-        
+    return metric[0]/metric[1]        
 
 def main():
     # dataloader
@@ -115,6 +124,8 @@ def main():
     model = LeNet5()
     criterion = nn.CrossEntropyLoss(reduction='none') # do mean() manually
     optimizer = torch.optim.SGD(model.parameters(), lr=LEARNING_RATE)
+    
+    model.to(device)
     
     # train
     for epoch in range(NUM_EPOCHS):
