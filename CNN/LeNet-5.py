@@ -101,7 +101,7 @@ def validation(model:LeNet5|nn.Module,
                dataloader:DataLoader):
     model.eval()
     metric = Accumulator(2)
-    with torch.no_gradO():
+    with torch.no_grad():
         for inputs, targets in dataloader:
             # deduce type explicitly
             inputs:torch.Tensor
