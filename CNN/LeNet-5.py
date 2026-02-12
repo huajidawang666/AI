@@ -139,11 +139,14 @@ def main():
                       val acc: {val_acc}""")
         
     # checkout
-    for inputs, targets in train_loader:
+    for inputs, targets in test_loader:
         # deduce type explicitly
         inputs:torch.Tensor
         targets:torch.Tensor
         predicts:torch.Tensor
+        
+        inputs = inputs.to(device)
+        targets = targets.to(device)
         
         predicts = model(inputs)
         if len(predicts.shape) > 1 and predicts.shape[1] > 1: # assert shape and output dim
