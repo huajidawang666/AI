@@ -8,7 +8,7 @@ from torch import nn
 # Hyperparameters
 BATCH_SIZE = 64
 LEARNING_RATE = 0.2
-NUM_EPOCHS = 50
+NUM_EPOCHS = 10
 
 # CUDA
 device = utils.check_CUDA_available()
@@ -137,6 +137,22 @@ def main():
                               dataloader=test_loader)
         print(f"""Epoch {epoch+1:>5} | train loss: {train_loss}, train acc: {train_acc}
                       val acc: {val_acc}""")
+        
+    # checkout
+    for inputs, targets in train_loader:
+        # deduce type explicitly
+        inputs:torch.Tensor
+        targets:torch.Tensor
+        predicts:torch.Tensor
+        
+        predicts = model(inputs)
+        if len(predicts.shape) > 1 and predicts.shape[1] > 1: # assert shape and output dim
+            predicts = predicts.argmax(dim=1)
+        print("Test:")
+        print("Predicts:", predicts[8:])
+        print("Targets: ", targets[8:])
+        break
+        
 
 if __name__ == "__main__":
     main()
