@@ -101,16 +101,17 @@ def validation(model:LeNet5|nn.Module,
                dataloader:DataLoader):
     model.eval()
     metric = Accumulator(2)
-    for inputs, targets in dataloader:
-        # deduce type explicitly
-        inputs:torch.Tensor
-        targets:torch.Tensor
+    with torch.no_gradO():
+        for inputs, targets in dataloader:
+            # deduce type explicitly
+            inputs:torch.Tensor
+            targets:torch.Tensor
         
-        inputs = inputs.to(device)
-        targets = targets.to(device)
-        
-        predicts = model(inputs)
-        metric.add(accuracy(predicts, targets), targets.numel())
+            inputs = inputs.to(device)
+            targets = targets.to(device)
+
+            predicts = model(inputs)
+            metric.add(accuracy(predicts, targets), targets.numel())
     return metric[0]/metric[1]        
 
 def main():
