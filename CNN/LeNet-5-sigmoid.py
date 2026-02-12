@@ -29,9 +29,9 @@ class LeNet5(nn.Module):
         super().__init__()
         self.feature_extractor = nn.Sequential(
             nn.Conv2d(in_channels=1, out_channels=6, kernel_size=5, stride=1), nn.Sigmoid(),
-            nn.MaxPool2d(kernel_size=2), nn.Sigmoid(),
+            nn.AvgPool2d(kernel_size=2), nn.Sigmoid(),
             nn.Conv2d(in_channels=6, out_channels=16, kernel_size=5, stride=1), nn.Sigmoid(),
-            nn.MaxPool2d(kernel_size=2), nn.Sigmoid(),
+            nn.AvgPool2d(kernel_size=2), nn.Sigmoid(),
             nn.Conv2d(in_channels=16, out_channels=120, kernel_size=5, stride=1), nn.Sigmoid(),
         )
         self.classifier = nn.Sequential(   
