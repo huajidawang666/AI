@@ -10,7 +10,7 @@ RESIZE=227
 BATCH_SIZE = 64
 LEARNING_RATE = 0.2
 NUM_EPOCHS = 10
-NUM_CLASSES = 100
+NUM_CLASSES = 200
 
 # CUDA
 device = utils.check_CUDA_available()
@@ -21,6 +21,18 @@ class AlexNet(nn.Module):
     CONVOLUTION -> ACTIVATION -> POOLING.
     
     Net Architecture:
+        Input  | 3x227x227
+        C1     | 96x55x55     11x11 stride=4
+        P2     | 96x27x27     3x3 stride=2 (Max Pool)
+        C3     | 256x27x27    5x5 stride=1 padding=2
+        P4     | 256x13x13    3x3 stride=2 (Max Pool)
+        C5     | 384x13x13    3x3 stride=1 padding=1
+        C6     | 384x13x13    3x3 stride=1 padding=1
+        C7     | 256x13x13    3x3 stride=1 padding=1
+        P8     | 256x6x6      3x3 stride=2 (Max Pool)
+        F9     | 4096         Full Connect Layer
+        F10    | 4096         Full Connect Layer
+        Output | 1000         Full Connect Layer (Softmax)
     """
     def __init__(self):
         super().__init__()
@@ -68,7 +80,7 @@ def train_one_epoch(model:AlexNet|nn.Module,
                     optimizer:torch.optim.Optimizer):
     metric = Accumulator(3)
     model.train()
-    for inputs, targets in dataloader:
+    for inputs, targets, _ in dataloader:
         # deduce type explicitly
         inputs:torch.Tensor
         targets:torch.Tensor
@@ -133,12 +145,18 @@ def visualization(model:AlexNet|nn.Module,
 
 def main():
     # dataloader
-    train_dataset, test_dataset = dataset.load_from_MNIST(resize=RESIZE) # input feature of AlexNet is 224x224x3
-    print(f"Train dataset size: {len(train_dataset)}")
+    tinyImageNetDataset = dataset.TinyImageNetDataset(train=True, resize=RESIZE)
+    test_dataset = dataset.TinyImageNetDataset(train=False, resize=RESIZE)
+    print(f"Train dataset size: {len(tinyImageNetDataset)}")
     print(f"Test dataset size: {len(test_dataset)}")
     
-    train_loader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True)
+    train_loader = DataLoader(tinyImageNetDataset, batch_size=BATCH_SIZE, shuffle=True)
     test_loader = DataLoader(test_dataset, batch_size=BATCH_SIZE, shuffle=False)
+    for inputs, targets, target_coords in test_loader:
+        print(inputs.shape)
+        print(targets.shape)
+        print(target_coords.shape)
+        break
     
     # model
     model = AlexNet()
@@ -153,8 +171,9 @@ def main():
                                dataloader=train_loader, 
                                criterion=criterion, 
                                optimizer=optimizer)
-        val_acc = validation(model=model,
-                              dataloader=test_loader)
+        val_acc = 0
+        # val_acc = validation(model=model,
+        #                       dataloader=test_loader)
         print(f"""Epoch {epoch+1:>5} | train loss: {train_loss}, train acc: {train_acc}
                       val acc: {val_acc}""")
         
