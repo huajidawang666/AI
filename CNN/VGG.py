@@ -16,7 +16,7 @@ BATCH_SIZE = 64
 LEARNING_RATE = 0.2
 NUM_EPOCHS = 10
 NUM_CLASSES = 10
-NUM_WORKERS = 2
+NUM_WORKERS = 8
 
 # CUDA
 device = utils.check_CUDA_available()
@@ -32,7 +32,7 @@ class VGG(nn.Module):
         super().__init__()
         self.feature_extractor = nn.Sequential(
             # Block 1: 2 convs, 64 filters
-            nn.Conv2d(3, 64, kernel_size=3, padding=1), nn.ReLU(inplace=True),
+            nn.Conv2d(1, 64, kernel_size=3, padding=1), nn.ReLU(inplace=True),
             nn.Conv2d(64, 64, kernel_size=3, padding=1), nn.ReLU(inplace=True),
             nn.MaxPool2d(kernel_size=2, stride=2),
 
