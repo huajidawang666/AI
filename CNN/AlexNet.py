@@ -1,8 +1,11 @@
 from time import time
+
 import dataset
 import torch
 import utils
 import tqdm
+import config
+from torchvision import datasets, transforms
 from utils.metric import Accumulator
 from torch.utils.data import DataLoader
 from torch import nn
@@ -40,7 +43,7 @@ class AlexNet(nn.Module):
     def __init__(self):
         super().__init__()
         self.feature_extractor = nn.Sequential(
-            nn.Conv2d(in_channels=3, out_channels=96, kernel_size=11, stride=4), nn.ReLU(),
+            nn.Conv2d(in_channels=1, out_channels=96, kernel_size=11, stride=4), nn.ReLU(),
             nn.MaxPool2d(kernel_size=3, stride=2), # Overlapping Pooling
             
             nn.Conv2d(in_channels=96, out_channels=256, kernel_size=5, stride=1, padding=2), nn.ReLU(),
@@ -146,15 +149,21 @@ def visualization(model:AlexNet|nn.Module,
     plt.tight_layout()
     plt.show()
 
-def main():    
-    # dataloader
-    tinyImageNetDataset = dataset.TinyImageNetDataset(train=True, resize=RESIZE)
-    test_dataset = dataset.TinyImageNetDataset(train=False, resize=RESIZE)
-    print(f"Train dataset size: {len(tinyImageNetDataset)}")
-    print(f"Test dataset size: {len(test_dataset)}")
+def main():
+    data_dir = config.DATA_DIR / 'FashionMNIST'
+    transform = transforms.Compose([
+        transforms.Resize((RESIZE, RESIZE)),
+        transforms.ToTensor()
+    ])
     
-    train_loader = DataLoader(tinyImageNetDataset, batch_size=BATCH_SIZE, shuffle=True, pin_memory=True, num_workers=NUM_WORKERS)
-    test_loader = DataLoader(test_dataset, batch_size=BATCH_SIZE, shuffle=False, pin_memory=True, num_workers=NUM_WORKERS)
+    train_set = datasets.FashionMNIST(root=data_dir, train=True, download=True, transform=transform)
+    test_set = datasets.FashionMNIST(root=data_dir, train=False, download=True, transform=transform)
+    
+    print(f"Train dataset size: {len(train_set)}")
+    print(f"Test dataset size: {len(test_set)}")
+    
+    train_loader = DataLoader(train_set, batch_size=BATCH_SIZE, shuffle=True, pin_memory=True, num_workers=NUM_WORKERS)
+    test_loader = DataLoader(test_set, batch_size=BATCH_SIZE, shuffle=False, pin_memory=True, num_workers=NUM_WORKERS)
     for inputs, targets in test_loader:
         print(inputs.shape)
         print(targets.shape)
@@ -209,7 +218,7 @@ def main():
         break
         
     # matplotlib
-    visualization(model, test_dataset)
+    visualization(model, test_set)
 
 if __name__ == "__main__":
     main()
