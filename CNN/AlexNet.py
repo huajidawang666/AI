@@ -12,6 +12,7 @@ BATCH_SIZE = 64
 LEARNING_RATE = 0.2
 NUM_EPOCHS = 10
 NUM_CLASSES = 200
+NUM_WORKERS = 16
 
 # CUDA
 device = utils.check_CUDA_available()
@@ -151,8 +152,8 @@ def main():
     print(f"Train dataset size: {len(tinyImageNetDataset)}")
     print(f"Test dataset size: {len(test_dataset)}")
     
-    train_loader = DataLoader(tinyImageNetDataset, batch_size=BATCH_SIZE, shuffle=True)
-    test_loader = DataLoader(test_dataset, batch_size=BATCH_SIZE, shuffle=False)
+    train_loader = DataLoader(tinyImageNetDataset, batch_size=BATCH_SIZE, shuffle=True, pin_memory=True, num_workers=NUM_WORKERS)
+    test_loader = DataLoader(test_dataset, batch_size=BATCH_SIZE, shuffle=False, pin_memory=True, num_workers=NUM_WORKERS)
     for inputs, targets, target_coords in test_loader:
         print(inputs.shape)
         print(targets.shape)
