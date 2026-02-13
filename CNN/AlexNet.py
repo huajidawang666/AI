@@ -12,7 +12,7 @@ BATCH_SIZE = 64
 LEARNING_RATE = 0.2
 NUM_EPOCHS = 10
 NUM_CLASSES = 200
-NUM_WORKERS = 16
+NUM_WORKERS = 2
 
 # CUDA
 device = utils.check_CUDA_available()
@@ -173,9 +173,9 @@ def main():
                                dataloader=train_loader, 
                                criterion=criterion, 
                                optimizer=optimizer)
-        val_acc = 0
-        # val_acc = validation(model=model,
-        #                       dataloader=test_loader)
+        # val_acc = 0
+        val_acc = validation(model=model,
+                              dataloader=test_loader)
         print(f"""Epoch {epoch+1:>5} | train loss: {train_loss}, train acc: {train_acc}
                       val acc: {val_acc}""")
         
