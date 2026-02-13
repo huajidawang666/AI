@@ -6,13 +6,16 @@ import numpy as np
 import torch
 
 class TinyImageNetDataset(Dataset):
-    def __init__(self, root=None, train=True, resize=None, image_size=64, transform=None):
+    def __init__(self, root=None, train=True, resize=227, image_size=64, transform=None):
         self.train_path = root if root else DATA_DIR / 'Tiny-ImageNet' / 'train'
         self.valid_path = root if root else DATA_DIR / 'Tiny-ImageNet' / 'val'
         self.resize = resize
         self.dataset = []
         self.image_size = image_size
-        self.transform = transform
+        trans = []
+        trans.append(transforms.Resize((self.resize, self.resize))) if resize else None
+        trans.append(transforms.ToTensor())
+        self.transform = transform if transform is not None else transforms.Compose(trans)
         self.classes = sorted([dir for dir in self.train_path.iterdir() if dir.is_dir()])        
         self.classes_dict = {dir.name: i for i, dir in enumerate(self.classes)}
         self._process_train_dir() if train else self._process_val_dir()
@@ -63,12 +66,7 @@ class TinyImageNetDataset(Dataset):
         return len(self.dataset)
     def __getitem__(self, idx):
         img = Image.open(self.dataset[idx]['path'], 'r').convert('RGB')
-        if self.resize is not None:
-            img = img.resize((self.resize, self.resize))
-        img = np.asarray(img, dtype=float) / 255.0
-        img = img.transpose((2, 0, 1))
-        img_tensor = torch.from_numpy(img).type(dtype=torch.float32)
-        img_tensor = self.transform(img_tensor) if self.transform is not None else img_tensor
+        img_tensor = self.transform(img)
         return img_tensor, self.dataset[idx]['label'], torch.Tensor(self.dataset[idx]['coords'])
     
 
