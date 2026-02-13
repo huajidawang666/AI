@@ -11,7 +11,7 @@ from torch.utils.data import DataLoader
 from torch import nn
 
 # Hyperparameters
-RESIZE=227
+RESIZE=512
 BATCH_SIZE = 64
 LEARNING_RATE = 0.2
 NUM_EPOCHS = 10
