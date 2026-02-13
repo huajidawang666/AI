@@ -1,6 +1,7 @@
 import dataset
 import torch
 import utils
+import tqdm
 from utils.metric import Accumulator
 from torch.utils.data import DataLoader
 from torch import nn
@@ -80,7 +81,7 @@ def train_one_epoch(model:AlexNet|nn.Module,
                     optimizer:torch.optim.Optimizer):
     metric = Accumulator(3)
     model.train()
-    for inputs, targets, _ in dataloader:
+    for inputs, targets, _ in tqdm.tqdm(dataloader):
         # deduce type explicitly
         inputs:torch.Tensor
         targets:torch.Tensor
