@@ -37,8 +37,8 @@ class VGG(nn.Module):
             # nn.MaxPool2d(kernel_size=2, stride=2),
 
             # Block 2: 2 convs, 128 filters
+            nn.Conv2d(1, 64, kernel_size=3, padding=1), nn.ReLU(inplace=True),
             nn.Conv2d(64, 128, kernel_size=3, padding=1), nn.ReLU(inplace=True),
-            nn.Conv2d(128, 128, kernel_size=3, padding=1), nn.ReLU(inplace=True),
             nn.MaxPool2d(kernel_size=2, stride=2),
 
             # Block 3: 3 convs, 256 filters
