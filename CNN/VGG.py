@@ -13,7 +13,7 @@ from torch import nn
 # Hyperparameters
 RESIZE=224
 BATCH_SIZE = 64
-LEARNING_RATE = 0.2
+LEARNING_RATE = 0.01
 NUM_EPOCHS = 10
 NUM_CLASSES = 10
 NUM_WORKERS = 8
@@ -162,7 +162,8 @@ def main():
     data_dir = config.DATA_DIR / 'FashionMNIST'
     transform = transforms.Compose([
         transforms.Resize((RESIZE, RESIZE)),
-        transforms.ToTensor()
+        transforms.ToTensor(),
+        transforms.Normalize((0.5,), (0.5,))
     ])
     
     train_set = datasets.FashionMNIST(root=data_dir, train=True, download=True, transform=transform)
@@ -191,7 +192,7 @@ def main():
     # model
     model = VGG()
     criterion = nn.CrossEntropyLoss(reduction='none') # do mean() manually
-    optimizer = torch.optim.SGD(model.parameters(), lr=LEARNING_RATE)
+    optimizer = torch.optim.Adam(model.parameters(), lr=LEARNING_RATE)
     
     model.to(device)
     
