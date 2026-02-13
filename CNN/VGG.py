@@ -21,49 +21,58 @@ NUM_WORKERS = 2
 # CUDA
 device = utils.check_CUDA_available()
 
-class AlexNet(nn.Module):
+class VGG(nn.Module):
     """
     In modern models, it is more common to see such a pattern:
     CONVOLUTION -> ACTIVATION -> POOLING.
     
     Net Architecture:
-        Input  | 3x227x227
-        C1     | 96x55x55     11x11 stride=4
-        P2     | 96x27x27     3x3 stride=2 (Max Pool)
-        C3     | 256x27x27    5x5 stride=1 padding=2
-        P4     | 256x13x13    3x3 stride=2 (Max Pool)
-        C5     | 384x13x13    3x3 stride=1 padding=1
-        C6     | 384x13x13    3x3 stride=1 padding=1
-        C7     | 256x13x13    3x3 stride=1 padding=1
-        P8     | 256x6x6      3x3 stride=2 (Max Pool)
-        F9     | 4096         Full Connect Layer
-        F10    | 4096         Full Connect Layer
-        Output | 1000         Full Connect Layer (Softmax)
     """
     def __init__(self):
         super().__init__()
         self.feature_extractor = nn.Sequential(
-            nn.Conv2d(in_channels=1, out_channels=96, kernel_size=11, stride=4), nn.ReLU(),
-            nn.MaxPool2d(kernel_size=3, stride=2), # Overlapping Pooling
-            
-            nn.Conv2d(in_channels=96, out_channels=256, kernel_size=5, stride=1, padding=2), nn.ReLU(),
-            nn.MaxPool2d(kernel_size=3, stride=2),
-            
-            nn.Conv2d(in_channels=256, out_channels=384, kernel_size=3, stride=1, padding=1), nn.ReLU(),
-            nn.Conv2d(in_channels=384, out_channels=384, kernel_size=3, stride=1, padding=1), nn.ReLU(),
-            nn.Conv2d(in_channels=384, out_channels=256, kernel_size=3, stride=1, padding=1), nn.ReLU(),
-            nn.MaxPool2d(kernel_size=3, stride=2)
+            # Block 1: 2 convs, 64 filters
+            nn.Conv2d(3, 64, kernel_size=3, padding=1), nn.ReLU(inplace=True),
+            nn.Conv2d(64, 64, kernel_size=3, padding=1), nn.ReLU(inplace=True),
+            nn.MaxPool2d(kernel_size=2, stride=2),
+
+            # Block 2: 2 convs, 128 filters
+            nn.Conv2d(64, 128, kernel_size=3, padding=1), nn.ReLU(inplace=True),
+            nn.Conv2d(128, 128, kernel_size=3, padding=1), nn.ReLU(inplace=True),
+            nn.MaxPool2d(kernel_size=2, stride=2),
+
+            # Block 3: 3 convs, 256 filters
+            nn.Conv2d(128, 256, kernel_size=3, padding=1), nn.ReLU(inplace=True),
+            nn.Conv2d(256, 256, kernel_size=3, padding=1), nn.ReLU(inplace=True),
+            nn.Conv2d(256, 256, kernel_size=3, padding=1), nn.ReLU(inplace=True),
+            nn.MaxPool2d(kernel_size=2, stride=2),
+
+            # Block 4: 3 convs, 512 filters
+            nn.Conv2d(256, 512, kernel_size=3, padding=1), nn.ReLU(inplace=True),
+            nn.Conv2d(512, 512, kernel_size=3, padding=1), nn.ReLU(inplace=True),
+            nn.Conv2d(512, 512, kernel_size=3, padding=1), nn.ReLU(inplace=True),
+            nn.MaxPool2d(kernel_size=2, stride=2),
+
+            # Block 5: 3 convs, 512 filters
+            nn.Conv2d(512, 512, kernel_size=3, padding=1), nn.ReLU(inplace=True),
+            nn.Conv2d(512, 512, kernel_size=3, padding=1), nn.ReLU(inplace=True),
+            nn.Conv2d(512, 512, kernel_size=3, padding=1), nn.ReLU(inplace=True),
+            nn.MaxPool2d(kernel_size=2, stride=2),
         )
+
         self.classifier = nn.Sequential(
-            nn.Linear(in_features=9216, out_features=4096), nn.ReLU(), nn.Dropout(p=0.5),
-            nn.Linear(in_features=4096, out_features=4096), nn.ReLU(), nn.Dropout(p=0.5),
-            nn.Linear(in_features=4096, out_features=NUM_CLASSES)
+            nn.Linear(512 * 7 * 7, 4096), nn.ReLU(inplace=True),
+            nn.Dropout(p=0.5),
+            nn.Linear(4096, 4096), nn.ReLU(inplace=True),
+            nn.Dropout(p=0.5),
+            nn.Linear(4096, NUM_CLASSES)
         )
-        
-    def forward(self, X):
-        X = self.feature_extractor(X)
-        X = torch.flatten(X, 1)
-        return self.classifier(X)
+
+    def forward(self, x):
+        x = self.feature_extractor(x)
+        x = torch.flatten(x, 1) # 展平为 (batch_size, 512*7*7)
+        x = self.classifier(x)
+        return x
     
 def accuracy(predicts:torch.Tensor, 
              targets:torch.Tensor):
@@ -80,7 +89,7 @@ def accuracy(predicts:torch.Tensor,
     compare:torch.Tensor = predicts.type(dtype=targets.dtype) == targets # ensure dtype matches
     return float(compare.type(dtype=targets.dtype).sum())
 
-def train_one_epoch(model:AlexNet|nn.Module, 
+def train_one_epoch(model:VGG|nn.Module, 
                     dataloader:DataLoader, 
                     criterion:nn.modules.loss._Loss, 
                     optimizer:torch.optim.Optimizer):
@@ -106,7 +115,7 @@ def train_one_epoch(model:AlexNet|nn.Module,
     # return loss and accuracy
     return metric[0]/metric[2], metric[1]/metric[2]
 
-def validation(model:AlexNet|nn.Module,
+def validation(model:VGG|nn.Module,
                dataloader:DataLoader):
     model.eval()
     metric = Accumulator(2)
@@ -123,7 +132,7 @@ def validation(model:AlexNet|nn.Module,
             metric.add(accuracy(predicts, targets), targets.numel())
     return metric[0]/metric[1]        
 
-def visualization(model:AlexNet|nn.Module,
+def visualization(model:VGG|nn.Module,
                   dataset:DataLoader):
     import matplotlib.pyplot as plt
 
@@ -180,7 +189,7 @@ def main():
     print(f"Estm. Data loading speed: {100 / (end_time - start_time):.2f} it/s")
     
     # model
-    model = AlexNet()
+    model = VGG()
     criterion = nn.CrossEntropyLoss(reduction='none') # do mean() manually
     optimizer = torch.optim.SGD(model.parameters(), lr=LEARNING_RATE)
     
