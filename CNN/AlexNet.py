@@ -1,3 +1,4 @@
+from time import time
 import dataset
 import torch
 import utils
@@ -82,7 +83,7 @@ def train_one_epoch(model:AlexNet|nn.Module,
                     optimizer:torch.optim.Optimizer):
     metric = Accumulator(3)
     model.train()
-    for inputs, targets, _ in tqdm.tqdm(dataloader):
+    for inputs, targets in tqdm.tqdm(dataloader):
         # deduce type explicitly
         inputs:torch.Tensor
         targets:torch.Tensor
@@ -145,7 +146,7 @@ def visualization(model:AlexNet|nn.Module,
     plt.tight_layout()
     plt.show()
 
-def main():
+def main():    
     # dataloader
     tinyImageNetDataset = dataset.TinyImageNetDataset(train=True, resize=RESIZE)
     test_dataset = dataset.TinyImageNetDataset(train=False, resize=RESIZE)
@@ -154,11 +155,21 @@ def main():
     
     train_loader = DataLoader(tinyImageNetDataset, batch_size=BATCH_SIZE, shuffle=True, pin_memory=True, num_workers=NUM_WORKERS)
     test_loader = DataLoader(test_dataset, batch_size=BATCH_SIZE, shuffle=False, pin_memory=True, num_workers=NUM_WORKERS)
-    for inputs, targets, target_coords in test_loader:
+    for inputs, targets in test_loader:
         print(inputs.shape)
         print(targets.shape)
-        print(target_coords.shape)
         break
+    
+    import time
+
+    # 假设你已经定义好了 train_loader
+    start_time = time.time()
+    for i, (images, labels) in enumerate(train_loader):
+        if i >= 100: break # 只测 100 个 batch
+        pass
+
+    end_time = time.time()
+    print(f"纯数据加载速度: {100 / (end_time - start_time):.2f} it/s")
     
     # model
     model = AlexNet()

@@ -23,7 +23,6 @@ class TinyImageNetDataset(Dataset):
     def _process_train_dir(self):
         for dir in self.classes:
             img_dir = self.train_path / dir / 'images'
-            coords_dict = {}
             try:
                 with open(self.train_path / dir.name / (dir.name + '_boxes.txt'), 'r') as f:
                     for line in f:
@@ -31,14 +30,11 @@ class TinyImageNetDataset(Dataset):
                         if not parts: continue
                         
                         filename = parts[0]
-                        coords_dict[filename] = [int(x) / self.image_size for x in parts[1:]]
                         
-                for image in img_dir.glob('*.JPEG'):
-                    self.dataset.append({
-                        'path': image,
-                        'label': self.classes_dict[dir.name],
-                        'coords': coords_dict[image.name]
-                    })
+                        self.dataset.append({
+                            'path': img_dir / filename,
+                            'label': self.classes_dict[dir.name],
+                        })
             except Exception as e:
                 print(f'[Error] Error occurred in loading Tiny-ImageNet Dataset: {e}')
         
@@ -52,12 +48,10 @@ class TinyImageNetDataset(Dataset):
                     
                     filename = parts[0]
                     label = self.classes_dict[parts[1]]
-                    coords = [int(x) / self.image_size for x in parts[2:]]
                     
                     self.dataset.append({
                         'path': img_dir / filename,
                         'label': label,
-                        'coords': coords
                     })
         except Exception as e:
             print(f'[Error] Error occurred in loading Tiny-ImageNet Dataset: {e}')
@@ -67,7 +61,7 @@ class TinyImageNetDataset(Dataset):
     def __getitem__(self, idx):
         img = Image.open(self.dataset[idx]['path'], 'r').convert('RGB')
         img_tensor = self.transform(img)
-        return img_tensor, self.dataset[idx]['label'], torch.Tensor(self.dataset[idx]['coords'])
+        return img_tensor, self.dataset[idx]['label']
     
 
 if __name__ == '__main__':
