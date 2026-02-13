@@ -1,8 +1,7 @@
-from pathlib import Path
+from config import DATA_DIR
 from torchvision import datasets, transforms
 
-BASE_DIR = Path(__file__).resolve().parent
-data_path = BASE_DIR / '../data/MNIST'
+data_path = DATA_DIR / 'MNIST'
 
 def load_from_MNIST(resize:int = 28):
     r"""
