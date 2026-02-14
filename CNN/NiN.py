@@ -77,10 +77,13 @@ class NiN(nn.Module):
     def _nin_block(self, in_channels, out_channels, kernel_size, stride=1, padding=0):
         return nn.Sequential(
             nn.Conv2d(in_channels, out_channels, kernel_size, stride, padding),
+            nn.BatchNorm2d(out_channels),
             nn.ReLU(inplace=True),
             nn.Conv2d(out_channels, out_channels, kernel_size=1), # 1st 1x1 conv
+            nn.BatchNorm2d(out_channels),
             nn.ReLU(inplace=True),
             nn.Conv2d(out_channels, out_channels, kernel_size=1), # 2nd 1x1 conv
+            nn.BatchNorm2d(out_channels),
             nn.ReLU(inplace=True)
         )
 
