@@ -233,7 +233,10 @@ def main():
         val_acc = validation(model=model,
                               dataloader=test_loader)
         print(f"""Epoch {epoch+1:>5} | train loss: {train_loss}, train acc: {train_acc}
-                      val acc: {val_acc}""")
+              val acc: {val_acc}
+              learning rate: {scheduler.get_last_lr()[0]}""")
+        
+        scheduler.step()
         
     # checkout
     for inputs, targets in test_loader:
