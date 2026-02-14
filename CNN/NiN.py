@@ -65,7 +65,15 @@ class NiN(nn.Module):
             
             nn.Flatten()
         )
+        self._initialize_weights()
         
+    def _initialize_weights(self):
+        for m in self.modules():
+            if isinstance(m, nn.Conv2d):
+                nn.init.xavier_uniform_(m.weight)
+                if m.bias is not None:
+                    nn.init.constant_(m.bias, 0)
+    
     def _nin_block(self, in_channels, out_channels, kernel_size, stride=1, padding=0):
         return nn.Sequential(
             nn.Conv2d(in_channels, out_channels, kernel_size, stride, padding),
