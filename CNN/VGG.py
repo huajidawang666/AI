@@ -27,6 +27,28 @@ class VGG(nn.Module):
     CONVOLUTION -> ACTIVATION -> POOLING.
     
     Net Architecture:
+    Input  | 3x224x224
+        C1-1   | 64x224x224    3x3 stride=1 padding=1
+        C1-2   | 64x224x224    3x3 stride=1 padding=1
+        P2     | 64x112x112    2x2 stride=2 (Max Pool)
+        C3-1   | 128x112x112   3x3 stride=1 padding=1
+        C3-2   | 128x112x112   3x3 stride=1 padding=1
+        P4     | 128x56x56     2x2 stride=2 (Max Pool)
+        C5-1   | 256x56x56     3x3 stride=1 padding=1
+        C5-2   | 256x56x56     3x3 stride=1 padding=1
+        C5-3   | 256x56x56     3x3 stride=1 padding=1
+        P6     | 256x28x28     2x2 stride=2 (Max Pool)
+        C7-1   | 512x28x28     3x3 stride=1 padding=1
+        C7-2   | 512x28x28     3x3 stride=1 padding=1
+        C7-3   | 512x28x28     3x3 stride=1 padding=1
+        P8     | 512x14x14     2x2 stride=2 (Max Pool)
+        C9-1   | 512x14x14     3x3 stride=1 padding=1
+        C9-2   | 512x14x14     3x3 stride=1 padding=1
+        C9-3   | 512x14x14     3x3 stride=1 padding=1
+        P10    | 512x7x7       2x2 stride=2 (Max Pool)
+        F11    | 4096          Full Connect Layer
+        F12    | 4096          Full Connect Layer
+        Output | 1000          Full Connect Layer (Softmax)
     """
     def __init__(self):
         super().__init__()
