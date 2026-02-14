@@ -12,9 +12,10 @@ from torch import nn
 
 # Hyperparameters
 RESIZE=32
-BATCH_SIZE = 64
+BATCH_SIZE = 256
 LEARNING_RATE = 1e-3
-NUM_EPOCHS = 10
+MIN_LEARNING_RATE = 1e-5
+NUM_EPOCHS = 100
 NUM_CLASSES = 10
 NUM_WORKERS = 8
 
@@ -217,6 +218,8 @@ def main():
     model = NiN()
     criterion = nn.CrossEntropyLoss(reduction='none') # do mean() manually
     optimizer = torch.optim.Adam(model.parameters(), lr=LEARNING_RATE, weight_decay=1e-4)
+    
+    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=NUM_EPOCHS, eta_min=MIN_LEARNING_RATE)
     
     model.to(device)
     
