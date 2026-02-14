@@ -179,7 +179,7 @@ def main():
     train_transform = transforms.Compose([
         # transforms.Resize((RESIZE, RESIZE)),
         transforms.RandomHorizontalFlip(),
-        transforms.RandomCrop(RESIZE, padding=4),
+        transforms.RandomCrop(RESIZE, padding=4), # data enhancement
         transforms.ToTensor(),
         transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
     ])
