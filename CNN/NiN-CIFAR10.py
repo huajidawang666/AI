@@ -176,14 +176,22 @@ def visualization(model:NiN|nn.Module,
 
 def main():
     data_dir = config.DATA_DIR / 'CIFAR-10'
-    transform = transforms.Compose([
+    train_transform = transforms.Compose([
+        # transforms.Resize((RESIZE, RESIZE)),
+        transforms.RandomHorizontalFlip(),
+        transforms.RandomCrop(RESIZE, padding=4),
+        transforms.ToTensor(),
+        transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+    ])
+    
+    test_transform = transforms.Compose([
         # transforms.Resize((RESIZE, RESIZE)),
         transforms.ToTensor(),
         transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
     ])
     
-    train_set = datasets.CIFAR10(root=data_dir, train=True, download=True, transform=transform)
-    test_set = datasets.CIFAR10(root=data_dir, train=False, download=True, transform=transform)
+    train_set = datasets.CIFAR10(root=data_dir, train=True, download=True, transform=train_transform)
+    test_set = datasets.CIFAR10(root=data_dir, train=False, download=True, transform=test_transform)
     
     print(f"Train dataset size: {len(train_set)}")
     print(f"Test dataset size: {len(test_set)}")
