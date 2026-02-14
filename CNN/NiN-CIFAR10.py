@@ -216,7 +216,7 @@ def main():
     # model
     model = NiN()
     criterion = nn.CrossEntropyLoss(reduction='none') # do mean() manually
-    optimizer = torch.optim.Adam(model.parameters(), lr=LEARNING_RATE)
+    optimizer = torch.optim.Adam(model.parameters(), lr=LEARNING_RATE, weight_decay=1e-4)
     
     model.to(device)
     
