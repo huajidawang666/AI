@@ -50,7 +50,7 @@ class NiN(nn.Module):
     def __init__(self):
         super().__init__()
         self.net = nn.Sequential(
-            self._nin_block(1, 96, kernel_size=11, stride=4, padding=0), # 227x227 -> 55x55
+            self._nin_block(3, 96, kernel_size=11, stride=4, padding=0), # 227x227 -> 55x55
             nn.MaxPool2d(kernel_size=3, stride=2), # 55x55 -> 27x27
             
             self._nin_block(96, 256, kernel_size=5, stride=1, padding=2), # 27x27 -> 27x27
@@ -175,15 +175,15 @@ def visualization(model:NiN|nn.Module,
     plt.show()
 
 def main():
-    data_dir = config.DATA_DIR / 'FashionMNIST'
+    data_dir = config.DATA_DIR / 'CIFAR-10'
     transform = transforms.Compose([
         transforms.Resize((RESIZE, RESIZE)),
         transforms.ToTensor(),
-        transforms.Normalize((0.5,), (0.5,))
+        transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
     ])
     
-    train_set = datasets.FashionMNIST(root=data_dir, train=True, download=True, transform=transform)
-    test_set = datasets.FashionMNIST(root=data_dir, train=False, download=True, transform=transform)
+    train_set = datasets.CIFAR10(root=data_dir, train=True, download=True, transform=transform)
+    test_set = datasets.CIFAR10(root=data_dir, train=False, download=True, transform=transform)
     
     print(f"Train dataset size: {len(train_set)}")
     print(f"Test dataset size: {len(test_set)}")
