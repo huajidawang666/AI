@@ -212,7 +212,7 @@ def train_one_epoch(model:GoogleNet|nn.Module,
         targets = targets.to(device)
         
         optimizer.zero_grad()
-        predicts, aux_preds_1, aux_preds_2 = model(inputs)
+        predicts= model(inputs)
         # loss_1:torch.Tensor = torch.nn.functional.cross_entropy(predicts, targets, reduction='none') # do mean() manually
         # loss_2:torch.Tensor = torch.nn.functional.cross_entropy(aux_preds_1, targets, reduction='none')
         # loss_3:torch.Tensor = torch.nn.functional.cross_entropy(aux_preds_2, targets, reduction='none')
