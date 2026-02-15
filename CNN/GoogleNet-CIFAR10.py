@@ -213,10 +213,11 @@ def train_one_epoch(model:GoogleNet|nn.Module,
         
         optimizer.zero_grad()
         predicts, aux_preds_1, aux_preds_2 = model(inputs)
-        loss_1:torch.Tensor = torch.nn.functional.cross_entropy(predicts, targets, reduction='none') # do mean() manually
-        loss_2:torch.Tensor = torch.nn.functional.cross_entropy(aux_preds_1, targets, reduction='none')
-        loss_3:torch.Tensor = torch.nn.functional.cross_entropy(aux_preds_2, targets, reduction='none')
-        loss = loss_1 + LOSS_WEIGHT_AUX * (loss_2 + loss_3)                 
+        # loss_1:torch.Tensor = torch.nn.functional.cross_entropy(predicts, targets, reduction='none') # do mean() manually
+        # loss_2:torch.Tensor = torch.nn.functional.cross_entropy(aux_preds_1, targets, reduction='none')
+        # loss_3:torch.Tensor = torch.nn.functional.cross_entropy(aux_preds_2, targets, reduction='none')
+        # loss = loss_1 + LOSS_WEIGHT_AUX * (loss_2 + loss_3)  
+        loss = torch.nn.functional.cross_entropy(predicts, targets, reduction='none') # for simplicity, do mean() in loss function               
         loss.mean().backward()
         optimizer.step()
         
@@ -310,7 +311,8 @@ def main():
     print(f"Estm. Data loading speed: {100 / (end_time - start_time):.2f} it/s")
     
     # model
-    model = GoogleNet()
+    # Batch Normalization implemented. Disabling auxiliary classifiers
+    model = GoogleNet(use_auxiliary=False)
     optimizer = torch.optim.Adam(model.parameters(), lr=LEARNING_RATE, weight_decay=1e-4)
     
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=NUM_EPOCHS, eta_min=MIN_LEARNING_RATE)
