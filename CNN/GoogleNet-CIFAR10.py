@@ -24,7 +24,13 @@ FINAL_DROPOUT = 0.4
 LOSS_WEIGHT_AUX = 0.3
 
 # CUDA
-device = utils.check_CUDA_available()
+device = None
+
+def get_device():
+    global device
+    if device is None:
+        device = utils.check_CUDA_available()
+    return device
 
 class InceptionBlock(nn.Module):
     """
@@ -264,6 +270,7 @@ def visualization(model:GoogleNet|nn.Module,
     plt.show()
 
 def main():
+    device = get_device()
     data_dir = config.DATA_DIR / 'CIFAR-10'
     train_transform = transforms.Compose([
         # transforms.Resize((RESIZE, RESIZE)),
