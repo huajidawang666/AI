@@ -198,7 +198,7 @@ def accuracy(predicts:torch.Tensor,
     if len(predicts.shape) > 1 and predicts.shape[1] > 1: # assert shape and output dim
         predicts = predicts.argmax(dim=1)
     compare:torch.Tensor = predicts.type(dtype=targets.dtype) == targets # ensure dtype matches
-    return float(compare.type(dtype=targets.dtype).sum())
+    return compare.type(dtype=targets.dtype).sum()
 
 def train_one_epoch(model:GoogleNet|nn.Module, 
                     dataloader:DataLoader, 
@@ -206,7 +206,7 @@ def train_one_epoch(model:GoogleNet|nn.Module,
                     scaler:torch.amp.GradScaler):
     metric = Accumulator(3)
     model.train()
-    for inputs, targets in tqdm.tqdm(dataloader):
+    for inputs, targets in tqdm.tqdm(dataloader, mininterval=2.0):
         # deduce type explicitly
         inputs:torch.Tensor
         targets:torch.Tensor
@@ -232,7 +232,7 @@ def train_one_epoch(model:GoogleNet|nn.Module,
             metric.add(loss.detach(), acc, targets.numel())
         
     # return loss and accuracy
-    return metric[0], metric[1]/metric[2]
+    return metric[0]/metric[2], metric[1]/metric[2]
 
 def validation(model:GoogleNet|nn.Module,
                dataloader:DataLoader):
