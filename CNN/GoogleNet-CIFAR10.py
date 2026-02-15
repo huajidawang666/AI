@@ -41,23 +41,28 @@ class InceptionBlock(nn.Module):
     """
     def __init__(self, in_channels, out_channels1, out_channels3red, out_channels3, out_channels5red, out_channels5, out_channels_pool):
         super().__init__()
-        self.branch1 = nn.Sequential(
-            nn.Conv2d(in_channels, out_channels1, kernel_size=1), nn.ReLU(inplace=True)
-        )
+        def conv_block(in_channels, out_channels, kernel_size, stride=1, padding=0):
+            return nn.Sequential(
+                nn.Conv2d(in_channels, out_channels, kernel_size=kernel_size, stride=stride, padding=padding),
+                nn.BatchNorm2d(out_channels),
+                nn.ReLU(inplace=True)
+            )
+        
+        self.branch1 = conv_block(in_channels, out_channels1, kernel_size=1)
         
         self.branch2 = nn.Sequential(
-            nn.Conv2d(in_channels, out_channels3red, kernel_size=1), nn.ReLU(inplace=True),
-            nn.Conv2d(out_channels3red, out_channels3, kernel_size=3, padding=1), nn.ReLU(inplace=True)
+            conv_block(in_channels, out_channels3red, kernel_size=1),
+            conv_block(out_channels3red, out_channels3, kernel_size=3, padding=1),
         )
         
         self.branch3 = nn.Sequential(
-            nn.Conv2d(in_channels, out_channels5red, kernel_size=1), nn.ReLU(inplace=True),
-            nn.Conv2d(out_channels5red, out_channels5, kernel_size=5, padding=2), nn.ReLU(inplace=True)
+            conv_block(in_channels, out_channels5red, kernel_size=1),
+            conv_block(out_channels5red, out_channels5, kernel_size=5, padding=2),
         )
         
         self.branch4 = nn.Sequential(
             nn.MaxPool2d(kernel_size=3, stride=1, padding=1),
-            nn.Conv2d(in_channels, out_channels_pool, kernel_size=1), nn.ReLU(inplace=True)
+            conv_block(in_channels, out_channels_pool, kernel_size=1),
         )
         
     def forward(self, x):
