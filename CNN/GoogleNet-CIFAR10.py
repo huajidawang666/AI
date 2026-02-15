@@ -161,14 +161,12 @@ class GoogleNet(nn.Module):
     def _get_before_inception(self):
         # assume input as 32x32
         return nn.Sequential(
-            nn.Conv2d(3, 64, kernel_size=3, stride=1, padding=1), nn.ReLU(inplace=True), # 32x32 -> 32x32
-            nn.MaxPool2d(kernel_size=3, stride=1, padding=1), # 32x32 -> 32x32
+            nn.Conv2d(3, 64, kernel_size=3, stride=1, padding=1), # 32x32 -> 32x32
             nn.BatchNorm2d(64),
-            
-            nn.Conv2d(64, 64, kernel_size=1), nn.ReLU(inplace=True), # 32x32 -> 32x32
-            nn.Conv2d(64, 192, kernel_size=3, padding=1), nn.ReLU(inplace=True), # 32x32 -> 32x32
+            nn.ReLU(inplace=True),
+            nn.Conv2d(64, 192, kernel_size=3, padding=1), # 32x32 -> 32x32
             nn.BatchNorm2d(192),
-            
+            nn.ReLU(inplace=True),
             nn.MaxPool2d(kernel_size=3, stride=1, padding=1) # 32x32 -> 32x32
         )
     
@@ -209,9 +207,9 @@ def train_one_epoch(model:GoogleNet|nn.Module,
         
         optimizer.zero_grad()
         predicts, aux_preds_1, aux_preds_2 = model(inputs)
-        loss_1:torch.Tensor = torch.nn.functional.cross_entropy(predicts, targets)
-        loss_2:torch.Tensor = torch.nn.functional.cross_entropy(aux_preds_1, targets)
-        loss_3:torch.Tensor = torch.nn.functional.cross_entropy(aux_preds_2, targets)
+        loss_1:torch.Tensor = torch.nn.functional.cross_entropy(predicts, targets, reduction='none') # do mean() manually
+        loss_2:torch.Tensor = torch.nn.functional.cross_entropy(aux_preds_1, targets, reduction='none')
+        loss_3:torch.Tensor = torch.nn.functional.cross_entropy(aux_preds_2, targets, reduction='none')
         loss = loss_1 + LOSS_WEIGHT_AUX * (loss_2 + loss_3)                 
         loss.mean().backward()
         optimizer.step()
