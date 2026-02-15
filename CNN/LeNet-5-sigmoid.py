@@ -8,7 +8,7 @@ from torch import nn
 # Hyperparameters
 BATCH_SIZE = 64
 LEARNING_RATE = 0.2
-NUM_EPOCHS = 10
+NUM_EPOCHS = 50
 
 # CUDA
 device = utils.check_CUDA_available()
@@ -27,28 +27,15 @@ class LeNet5(nn.Module):
     """
     def __init__(self):
         super().__init__()
-        # Conventional LeNet-5 uses AvgPool & Sigmoid
-        #
-        # self.feature_extractor = nn.Sequential(
-        #     nn.Conv2d(in_channels=1, out_channels=6, kernel_size=5, stride=1), nn.Sigmoid(),
-        #     nn.AvgPool2d(kernel_size=2), nn.Sigmoid(),
-        #     nn.Conv2d(in_channels=6, out_channels=16, kernel_size=5, stride=1), nn.Sigmoid(),
-        #     nn.AvgPool2d(kernel_size=2), nn.Sigmoid(),
-        #     nn.Conv2d(in_channels=16, out_channels=120, kernel_size=5, stride=1), nn.Sigmoid(),
-        # )
-        # self.classifier = nn.Sequential(   
-        #     nn.Linear(in_features=120, out_features=84), nn.Sigmoid(),
-        #     nn.Linear(in_features=84, out_features=10)
-        # )
         self.feature_extractor = nn.Sequential(
-            nn.Conv2d(in_channels=1, out_channels=6, kernel_size=5, stride=1), nn.ReLU(),
-            nn.MaxPool2d(kernel_size=2), nn.ReLU(),
-            nn.Conv2d(in_channels=6, out_channels=16, kernel_size=5, stride=1), nn.ReLU(),
-            nn.MaxPool2d(kernel_size=2), nn.ReLU(),
-            nn.Conv2d(in_channels=16, out_channels=120, kernel_size=5, stride=1), nn.ReLU(),
+            nn.Conv2d(in_channels=1, out_channels=6, kernel_size=5, stride=1), nn.Sigmoid(),
+            nn.AvgPool2d(kernel_size=2), nn.Sigmoid(),
+            nn.Conv2d(in_channels=6, out_channels=16, kernel_size=5, stride=1), nn.Sigmoid(),
+            nn.AvgPool2d(kernel_size=2), nn.Sigmoid(),
+            nn.Conv2d(in_channels=16, out_channels=120, kernel_size=5, stride=1), nn.Sigmoid(),
         )
         self.classifier = nn.Sequential(   
-            nn.Linear(in_features=120, out_features=84), nn.ReLU(),
+            nn.Linear(in_features=120, out_features=84), nn.Sigmoid(),
             nn.Linear(in_features=84, out_features=10)
         )
     def forward(self, X):
@@ -101,44 +88,17 @@ def validation(model:LeNet5|nn.Module,
                dataloader:DataLoader):
     model.eval()
     metric = Accumulator(2)
-    with torch.no_grad():
-        for inputs, targets in dataloader:
-            # deduce type explicitly
-            inputs:torch.Tensor
-            targets:torch.Tensor
+    for inputs, targets in dataloader:
+        # deduce type explicitly
+        inputs:torch.Tensor
+        targets:torch.Tensor
         
-            inputs = inputs.to(device)
-            targets = targets.to(device)
-
-            predicts = model(inputs)
-            metric.add(accuracy(predicts, targets), targets.numel())
+        inputs = inputs.to(device)
+        targets = targets.to(device)
+        
+        predicts = model(inputs)
+        metric.add(accuracy(predicts, targets), targets.numel())
     return metric[0]/metric[1]        
-
-def visualization(model:LeNet5|nn.Module,
-                  dataset:DataLoader):
-    import matplotlib.pyplot as plt
-
-    print("\n--- Visualizing Predictions ---")
-    model.eval()
-    
-    checkout_batch_size = 10
-    checkout_loader = DataLoader(dataset, batch_size=checkout_batch_size, shuffle=True)
-    images, labels = next(iter(checkout_loader))
-    
-    with torch.no_grad():
-        outputs = model(images.to(device))
-        preds = outputs.argmax(dim=1).cpu()
-
-    plt.figure(figsize=(12, 5))
-    for i in range(checkout_batch_size):
-        plt.subplot(2, 5, i + 1)
-        plt.imshow(images[i].squeeze(), cmap='gray')
-        color = 'green' if preds[i] == labels[i] else 'red'
-        plt.title(f"Pred: {preds[i]}\nActual: {labels[i]}", color=color)
-        plt.axis('off')
-    
-    plt.tight_layout()
-    plt.show()
 
 def main():
     # dataloader
@@ -166,27 +126,6 @@ def main():
                               dataloader=test_loader)
         print(f"""Epoch {epoch+1:>5} | train loss: {train_loss}, train acc: {train_acc}
                       val acc: {val_acc}""")
-        
-    # checkout
-    for inputs, targets in test_loader:
-        # deduce type explicitly
-        inputs:torch.Tensor
-        targets:torch.Tensor
-        predicts:torch.Tensor
-        
-        inputs = inputs.to(device)
-        targets = targets.to(device)
-        
-        predicts = model(inputs)
-        if len(predicts.shape) > 1 and predicts.shape[1] > 1: # assert shape and output dim
-            predicts = predicts.argmax(dim=1)
-        print("Test:")
-        print("Predicts:", predicts[8:])
-        print("Targets: ", targets[8:])
-        break
-        
-    # matplotlib
-    visualization(model, test_dataset)
 
 if __name__ == "__main__":
     main()

@@ -1,56 +1,65 @@
+from time import time
+
 import dataset
 import torch
 import utils
+import tqdm
+import config
+from torchvision import datasets, transforms
 from utils.metric import Accumulator
 from torch.utils.data import DataLoader
 from torch import nn
 
 # Hyperparameters
+RESIZE=227
 BATCH_SIZE = 64
 LEARNING_RATE = 0.2
 NUM_EPOCHS = 10
+NUM_CLASSES = 10
+NUM_WORKERS = 2
 
 # CUDA
 device = utils.check_CUDA_available()
 
-class LeNet5(nn.Module):
+class AlexNet(nn.Module):
     """
+    In modern models, it is more common to see such a pattern:
+    CONVOLUTION -> ACTIVATION -> POOLING.
+    
     Net Architecture:
-        Input  | 1x32x32
-        C1     | 6x28x28     5x5 stride=1
-        P2     | 6x14x14     2x2
-        C3     | 16x10x10    5x5 stride=1
-        P4     | 16x5x5      2x2
-        C5     | 120x1x1     5x5 stride=1    Equivalent of a Full Connect Layer
-        F6     | 84
-        Output | 10
+        Input  | 3x227x227
+        C1     | 96x55x55     11x11 stride=4
+        P2     | 96x27x27     3x3 stride=2 (Max Pool)
+        C3     | 256x27x27    5x5 stride=1 padding=2
+        P4     | 256x13x13    3x3 stride=2 (Max Pool)
+        C5     | 384x13x13    3x3 stride=1 padding=1
+        C6     | 384x13x13    3x3 stride=1 padding=1
+        C7     | 256x13x13    3x3 stride=1 padding=1
+        P8     | 256x6x6      3x3 stride=2 (Max Pool)
+        F9     | 4096         Full Connect Layer
+        F10    | 4096         Full Connect Layer
+        Output | 1000         Full Connect Layer (Softmax)
     """
     def __init__(self):
         super().__init__()
-        # Conventional LeNet-5 uses AvgPool & Sigmoid
-        #
-        # self.feature_extractor = nn.Sequential(
-        #     nn.Conv2d(in_channels=1, out_channels=6, kernel_size=5, stride=1), nn.Sigmoid(),
-        #     nn.AvgPool2d(kernel_size=2), nn.Sigmoid(),
-        #     nn.Conv2d(in_channels=6, out_channels=16, kernel_size=5, stride=1), nn.Sigmoid(),
-        #     nn.AvgPool2d(kernel_size=2), nn.Sigmoid(),
-        #     nn.Conv2d(in_channels=16, out_channels=120, kernel_size=5, stride=1), nn.Sigmoid(),
-        # )
-        # self.classifier = nn.Sequential(   
-        #     nn.Linear(in_features=120, out_features=84), nn.Sigmoid(),
-        #     nn.Linear(in_features=84, out_features=10)
-        # )
         self.feature_extractor = nn.Sequential(
-            nn.Conv2d(in_channels=1, out_channels=6, kernel_size=5, stride=1), nn.ReLU(),
-            nn.MaxPool2d(kernel_size=2), nn.ReLU(),
-            nn.Conv2d(in_channels=6, out_channels=16, kernel_size=5, stride=1), nn.ReLU(),
-            nn.MaxPool2d(kernel_size=2), nn.ReLU(),
-            nn.Conv2d(in_channels=16, out_channels=120, kernel_size=5, stride=1), nn.ReLU(),
+            nn.Conv2d(in_channels=1, out_channels=96, kernel_size=11, stride=4), nn.ReLU(),
+            nn.MaxPool2d(kernel_size=3, stride=2), # Overlapping Pooling
+            
+            nn.Conv2d(in_channels=96, out_channels=256, kernel_size=5, stride=1, padding=2), nn.ReLU(),
+            nn.MaxPool2d(kernel_size=3, stride=2),
+            
+            nn.Conv2d(in_channels=256, out_channels=384, kernel_size=3, stride=1, padding=1), nn.ReLU(),
+            nn.Conv2d(in_channels=384, out_channels=384, kernel_size=3, stride=1, padding=1), nn.ReLU(),
+            nn.Conv2d(in_channels=384, out_channels=256, kernel_size=3, stride=1, padding=1), nn.ReLU(),
+            nn.MaxPool2d(kernel_size=3, stride=2)
         )
-        self.classifier = nn.Sequential(   
-            nn.Linear(in_features=120, out_features=84), nn.ReLU(),
-            nn.Linear(in_features=84, out_features=10)
+        self.classifier = nn.Sequential(
+            nn.Linear(in_features=9216, out_features=4096), nn.ReLU(), nn.Dropout(p=0.5),
+            nn.Linear(in_features=4096, out_features=4096), nn.ReLU(), nn.Dropout(p=0.5),
+            nn.Linear(in_features=4096, out_features=NUM_CLASSES)
         )
+        
     def forward(self, X):
         X = self.feature_extractor(X)
         X = torch.flatten(X, 1)
@@ -64,20 +73,20 @@ def accuracy(predicts:torch.Tensor,
     :return:
         return num of right predicts compared to targets
     """
-    # predicts shall be a tensor in (batch, 10)
+    # predicts shall be a tensor in (batch, clssification)
     # while targets shell be a tensor in (batch,)
     if len(predicts.shape) > 1 and predicts.shape[1] > 1: # assert shape and output dim
         predicts = predicts.argmax(dim=1)
     compare:torch.Tensor = predicts.type(dtype=targets.dtype) == targets # ensure dtype matches
     return float(compare.type(dtype=targets.dtype).sum())
 
-def train_one_epoch(model:LeNet5|nn.Module, 
+def train_one_epoch(model:AlexNet|nn.Module, 
                     dataloader:DataLoader, 
                     criterion:nn.modules.loss._Loss, 
                     optimizer:torch.optim.Optimizer):
     metric = Accumulator(3)
     model.train()
-    for inputs, targets in dataloader:
+    for inputs, targets in tqdm.tqdm(dataloader):
         # deduce type explicitly
         inputs:torch.Tensor
         targets:torch.Tensor
@@ -97,7 +106,7 @@ def train_one_epoch(model:LeNet5|nn.Module,
     # return loss and accuracy
     return metric[0]/metric[2], metric[1]/metric[2]
 
-def validation(model:LeNet5|nn.Module,
+def validation(model:AlexNet|nn.Module,
                dataloader:DataLoader):
     model.eval()
     metric = Accumulator(2)
@@ -114,7 +123,7 @@ def validation(model:LeNet5|nn.Module,
             metric.add(accuracy(predicts, targets), targets.numel())
     return metric[0]/metric[1]        
 
-def visualization(model:LeNet5|nn.Module,
+def visualization(model:AlexNet|nn.Module,
                   dataset:DataLoader):
     import matplotlib.pyplot as plt
 
@@ -141,16 +150,37 @@ def visualization(model:LeNet5|nn.Module,
     plt.show()
 
 def main():
-    # dataloader
-    train_dataset, test_dataset = dataset.load_from_MNIST(resize=32) # input feature of LeNet-5 is 32x32
-    print(f"Train dataset size: {len(train_dataset)}")
-    print(f"Test dataset size: {len(test_dataset)}")
+    data_dir = config.DATA_DIR / 'FashionMNIST'
+    transform = transforms.Compose([
+        transforms.Resize((RESIZE, RESIZE)),
+        transforms.ToTensor()
+    ])
     
-    train_loader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True)
-    test_loader = DataLoader(test_dataset, batch_size=BATCH_SIZE, shuffle=False)
+    train_set = datasets.FashionMNIST(root=data_dir, train=True, download=True, transform=transform)
+    test_set = datasets.FashionMNIST(root=data_dir, train=False, download=True, transform=transform)
+    
+    print(f"Train dataset size: {len(train_set)}")
+    print(f"Test dataset size: {len(test_set)}")
+    
+    train_loader = DataLoader(train_set, batch_size=BATCH_SIZE, shuffle=True, pin_memory=True, num_workers=NUM_WORKERS)
+    test_loader = DataLoader(test_set, batch_size=BATCH_SIZE, shuffle=False, pin_memory=True, num_workers=NUM_WORKERS)
+    for inputs, targets in test_loader:
+        print(inputs.shape)
+        print(targets.shape)
+        break
+    
+    # Check data loading speed
+    import time
+    start_time = time.time()
+    for i, (images, labels) in enumerate(train_loader):
+        if i >= 100: break
+        pass
+
+    end_time = time.time()
+    print(f"Estm. Data loading speed: {100 / (end_time - start_time):.2f} it/s")
     
     # model
-    model = LeNet5()
+    model = AlexNet()
     criterion = nn.CrossEntropyLoss(reduction='none') # do mean() manually
     optimizer = torch.optim.SGD(model.parameters(), lr=LEARNING_RATE)
     
@@ -162,6 +192,7 @@ def main():
                                dataloader=train_loader, 
                                criterion=criterion, 
                                optimizer=optimizer)
+        # val_acc = 0
         val_acc = validation(model=model,
                               dataloader=test_loader)
         print(f"""Epoch {epoch+1:>5} | train loss: {train_loss}, train acc: {train_acc}
@@ -186,7 +217,7 @@ def main():
         break
         
     # matplotlib
-    visualization(model, test_dataset)
+    visualization(model, test_set)
 
 if __name__ == "__main__":
     main()
