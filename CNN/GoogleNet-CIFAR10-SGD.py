@@ -202,7 +202,8 @@ def accuracy(predicts:torch.Tensor,
 
 def train_one_epoch(model:GoogleNet|nn.Module, 
                     dataloader:DataLoader, 
-                    optimizer:torch.optim.Optimizer):
+                    optimizer:torch.optim.Optimizer,
+                    scaler:torch.amp.GradScaler):
     metric = Accumulator(3)
     model.train()
     for inputs, targets in tqdm.tqdm(dataloader):
@@ -210,24 +211,28 @@ def train_one_epoch(model:GoogleNet|nn.Module,
         inputs:torch.Tensor
         targets:torch.Tensor
 
-        inputs = inputs.to(device)
-        targets = targets.to(device)
+        inputs = inputs.to(device, non_blocking=True)
+        targets = targets.to(device, non_blocking=True)
+
+        # 训练循环中
+        with torch.amp.autocast('cuda'):
+            optimizer.zero_grad(set_to_none=True)
+            predicts= model(inputs)
+            # loss_1:torch.Tensor = torch.nn.functional.cross_entropy(predicts, targets, reduction='none') # do mean() manually
+            # loss_2:torch.Tensor = torch.nn.functional.cross_entropy(aux_preds_1, targets, reduction='none')
+            # loss_3:torch.Tensor = torch.nn.functional.cross_entropy(aux_preds_2, targets, reduction='none')
+            # loss = loss_1 + LOSS_WEIGHT_AUX * (loss_2 + loss_3)  
+            loss = torch.nn.functional.cross_entropy(predicts, targets) # for simplicity, do mean() in loss function               
+        scaler.scale(loss).backward()
+        scaler.step(optimizer)
+        scaler.update()
         
-        optimizer.zero_grad()
-        predicts= model(inputs)
-        # loss_1:torch.Tensor = torch.nn.functional.cross_entropy(predicts, targets, reduction='none') # do mean() manually
-        # loss_2:torch.Tensor = torch.nn.functional.cross_entropy(aux_preds_1, targets, reduction='none')
-        # loss_3:torch.Tensor = torch.nn.functional.cross_entropy(aux_preds_2, targets, reduction='none')
-        # loss = loss_1 + LOSS_WEIGHT_AUX * (loss_2 + loss_3)  
-        loss = torch.nn.functional.cross_entropy(predicts, targets, reduction='none') # for simplicity, do mean() in loss function               
-        loss.mean().backward()
-        optimizer.step()
-        
-        acc = accuracy(predicts, targets)
-        metric.add(float(loss.sum()), acc, targets.numel())
+        with torch.no_grad():
+            acc = accuracy(predicts, targets)
+            metric.add(loss.detach(), acc, targets.numel())
         
     # return loss and accuracy
-    return metric[0]/metric[2], metric[1]/metric[2]
+    return metric[0], metric[1]/metric[2]
 
 def validation(model:GoogleNet|nn.Module,
                dataloader:DataLoader):
@@ -315,17 +320,20 @@ def main():
     # model
     # Batch Normalization implemented. Disabling auxiliary classifiers
     model = GoogleNet(use_auxiliary=False)
+    model.to(device)
+    model = torch.compile(model)
     optimizer = torch.optim.SGD(model.parameters(), lr=LEARNING_RATE, weight_decay=WEIGHT_DECAY, momentum=MOMENTUM)
     
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=NUM_EPOCHS, eta_min=MIN_LEARNING_RATE)
     
-    model.to(device)
+    scaler = torch.amp.GradScaler('cuda')
     
     # train
     for epoch in range(NUM_EPOCHS):
         train_loss, train_acc= train_one_epoch(model=model, 
                                dataloader=train_loader, 
-                               optimizer=optimizer)
+                               optimizer=optimizer,
+                               scaler=scaler)
         # val_acc = 0
         val_acc = validation(model=model,
                               dataloader=test_loader)
