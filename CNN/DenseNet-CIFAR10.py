@@ -10,7 +10,7 @@ from time import time
 
 # Hyperparameters
 RESIZE=32
-BATCH_SIZE = 256
+BATCH_SIZE = 1024
 LEARNING_RATE = 1e-1
 MIN_LEARNING_RATE = 1e-3
 WEIGHT_DECAY = 5e-4
@@ -165,8 +165,8 @@ def train_one_epoch(model:DenseNet|nn.Module,
         inputs:torch.Tensor
         targets:torch.Tensor
 
-        inputs = inputs.to(device, non_blocking=True)
-        targets = targets.to(device, non_blocking=True)
+        inputs = inputs.to(device, non_blocking=True, memory_format=torch.channels_last)
+        targets = targets.to(device, non_blocking=True, memory_format=torch.channels_last)
 
         # 训练循环中
         with torch.amp.autocast('cuda'):
@@ -193,9 +193,9 @@ def validation(model:DenseNet|nn.Module,
             # deduce type explicitly
             inputs:torch.Tensor
             targets:torch.Tensor
-        
-            inputs = inputs.to(device)
-            targets = targets.to(device)
+
+            inputs = inputs.to(device, non_blocking=True, memory_format=torch.channels_last)
+            targets = targets.to(device, non_blocking=True, memory_format=torch.channels_last)
 
             predicts = model(inputs)
             metric.add(accuracy(predicts, targets), targets.numel())
@@ -213,7 +213,7 @@ def visualization(model:DenseNet|nn.Module,
     images, labels = next(iter(checkout_loader))
     
     with torch.no_grad():
-        outputs = model(images.to(device))
+        outputs = model(images.to(device, non_blocking=True, memory_format=torch.channels_last))
         preds = outputs.argmax(dim=1).cpu()
 
     plt.figure(figsize=(12, 5))
@@ -269,7 +269,7 @@ def main():
     
     # model
     model = DenseNet()
-    model.to(device)
+    model.to(device, memory_format=torch.channels_last)
     model = torch.compile(model)
     optimizer = torch.optim.SGD(model.parameters(), lr=LEARNING_RATE, weight_decay=WEIGHT_DECAY, momentum=MOMENTUM)
     
@@ -299,9 +299,9 @@ def main():
         targets:torch.Tensor
         predicts:torch.Tensor
         
-        inputs = inputs.to(device)
-        targets = targets.to(device)
-        
+        inputs = inputs.to(device, non_blocking=True, memory_format=torch.channels_last)
+        targets = targets.to(device, non_blocking=True, memory_format=torch.channels_last)
+
         predicts = model(inputs)
         if len(predicts.shape) > 1 and predicts.shape[1] > 1: # assert shape and output dim
             predicts = predicts.argmax(dim=1)
