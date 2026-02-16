@@ -18,7 +18,7 @@ WEIGHT_DECAY = 5e-4
 MOMENTUM = 0.9
 NUM_EPOCHS = 100
 NUM_CLASSES = 10
-NUM_WORKERS = 8
+NUM_WORKERS = 12
 
 AUX_DROPOUT = 0.7
 FINAL_DROPOUT = 0.4
@@ -251,8 +251,8 @@ def main():
     print(f"Train dataset size: {len(train_set)}")
     print(f"Test dataset size: {len(test_set)}")
     
-    train_loader = DataLoader(train_set, batch_size=BATCH_SIZE, shuffle=True, pin_memory=True, num_workers=NUM_WORKERS)
-    test_loader = DataLoader(test_set, batch_size=BATCH_SIZE, shuffle=False, pin_memory=True, num_workers=NUM_WORKERS)
+    train_loader = DataLoader(train_set, batch_size=BATCH_SIZE, shuffle=True, pin_memory=True, num_workers=NUM_WORKERS, prefetch_factor=4, persistent_workers=True)
+    test_loader = DataLoader(test_set, batch_size=BATCH_SIZE, shuffle=False, pin_memory=True, num_workers=NUM_WORKERS, prefetch_factor=4, persistent_workers=True)
     for inputs, targets in test_loader:
         print(inputs.shape)
         print(targets.shape)
