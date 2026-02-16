@@ -13,6 +13,7 @@ RESIZE=32
 BATCH_SIZE = 1024
 LEARNING_RATE = 1e-1
 MIN_LEARNING_RATE = 1e-3
+
 WEIGHT_DECAY = 5e-4
 MOMENTUM = 0.9
 NUM_EPOCHS = 100
@@ -272,9 +273,9 @@ def main():
     model.to(device, memory_format=torch.channels_last)
     model = torch.compile(model)
     optimizer = torch.optim.SGD(model.parameters(), lr=LEARNING_RATE, weight_decay=WEIGHT_DECAY, momentum=MOMENTUM)
-    
-    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=NUM_EPOCHS, eta_min=MIN_LEARNING_RATE)
-    
+
+    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=NUM_EPOCHS // 2, eta_min=MIN_LEARNING_RATE)
+
     scaler = torch.amp.GradScaler('cuda')
     
     # train
