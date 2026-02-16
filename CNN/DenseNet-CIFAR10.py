@@ -167,7 +167,7 @@ def train_one_epoch(model:DenseNet|nn.Module,
         targets:torch.Tensor
 
         inputs = inputs.to(device, non_blocking=True, memory_format=torch.channels_last)
-        targets = targets.to(device, non_blocking=True, memory_format=torch.channels_last)
+        targets = targets.to(device, non_blocking=True)
 
         # 训练循环中
         with torch.amp.autocast('cuda'):
@@ -196,7 +196,7 @@ def validation(model:DenseNet|nn.Module,
             targets:torch.Tensor
 
             inputs = inputs.to(device, non_blocking=True, memory_format=torch.channels_last)
-            targets = targets.to(device, non_blocking=True, memory_format=torch.channels_last)
+            targets = targets.to(device, non_blocking=True)
 
             predicts = model(inputs)
             metric.add(accuracy(predicts, targets), targets.numel())
@@ -301,7 +301,7 @@ def main():
         predicts:torch.Tensor
         
         inputs = inputs.to(device, non_blocking=True, memory_format=torch.channels_last)
-        targets = targets.to(device, non_blocking=True, memory_format=torch.channels_last)
+        targets = targets.to(device, non_blocking=True)
 
         predicts = model(inputs)
         if len(predicts.shape) > 1 and predicts.shape[1] > 1: # assert shape and output dim
