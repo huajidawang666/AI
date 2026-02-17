@@ -2,6 +2,7 @@ import torch
 import config
 from torch import nn, optim
 from torch.utils.data import DataLoader, Dataset
+from utils.metric import Accumulator
 import re
 import tarfile
 import os
@@ -92,8 +93,9 @@ optimizer = optim.Adam(model.parameters(), lr=0.001)
 criterion = nn.BCEWithLogitsLoss()
 
 print(f"开始训练 (设备: {DEVICE})...")
-for epoch in range(3):
+for epoch in range(50):
     model.train()
+    metric = Accumulator(2)  # 记录总损失和样本数
     for texts, labels in train_loader:
         texts, labels = texts.to(DEVICE), labels.to(DEVICE)
         optimizer.zero_grad()
@@ -101,4 +103,8 @@ for epoch in range(3):
         loss = criterion(outputs, labels)
         loss.backward()
         optimizer.step()
-    print(f"Epoch {epoch+1} 完成，Loss: {loss.item():.4f}")
+        
+        with torch.no_grad():
+            acc = ((outputs > 0) == (labels > 0.5)).sum().item()
+            metric.add(labels.size(0), acc)
+    print(f"Epoch {epoch+1} 完成，Loss: {loss.item():.4f}, Accuracy: {metric[1]/metric[0]:.4f}")
