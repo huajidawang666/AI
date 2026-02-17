@@ -1,108 +1,104 @@
 import torch
 import config
-from torch import nn
-from torch.utils.data import DataLoader
-from torchtext.datasets import IMDB
-from torchtext.data.utils import get_tokenizer
-from torchtext.vocab import build_vocab_from_iterator
-from torch.nn.utils.rnn import pad_sequence
-import time
+from torch import nn, optim
+from torch.utils.data import DataLoader, Dataset
+import re
+import tarfile
+import os
+import requests
+from collections import Counter
 
-# --- 1. 配置参数 ---
-DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-BATCH_SIZE = 64
-EMBEDDING_DIM = 100
-HIDDEN_DIM = 128
-MAX_LEN = 200  # 每条评论只取前200个单词
-EPOCHS = 5
+# --- 1. 下载并解压数据 (纯手动实现) ---
+DATA_URL = "http://ai.stanford.edu/~amaas/data/sentiment/aclImdb_v1.tar.gz"
+DATA_DIR = config.DATA_DIR / "IMDB"
+DATA_DIR.mkdir(parents=True, exist_ok=True)
+DATA_PATH = config.DATA_DIR / "IMDB" / "aclImdb_v1.tar.gz"
 
-# --- 2. 数据准备 ---
-tokenizer = get_tokenizer("basic_english")
+if not os.path.exists("aclImdb"):
+    print("正在下载 IMDB 数据集...")
+    r = requests.get(DATA_URL, stream=True)
+    with open(DATA_PATH, 'wb') as f:
+        f.write(r.raw.read())
+    with tarfile.open(DATA_PATH, 'r:gz') as tar:
+        tar.extractall(path=DATA_DIR)
 
-def yield_tokens(data_iter):
-    for _, text in data_iter:
-        yield tokenizer(text)
+# --- 2. 简单的分词和词汇表构建 ---
+def tokenize(text):
+    # 只保留字母，转小写
+    return re.sub(r'[^a-zA-Z]', ' ', text.lower()).split()
 
-# 加载并构建词汇表
-data_path = config.DATA_DIR / 'IMDB'
-train_iter = IMDB(path=data_path, split='train')
-vocab = build_vocab_from_iterator(yield_tokens(train_iter), specials=["<unk>", "<pad>"])
-vocab.set_default_index(vocab["<unk>"])
-
-# 数据处理管道
-label_pipeline = lambda x: 1.0 if x == 2 else 0.0 # IMDB标签2是正向
-text_pipeline = lambda x: vocab(tokenizer(x))[:MAX_LEN] # 截断长度
-
-def collate_batch(batch):
-    label_list, text_list = [], []
-    for (_label, _text) in batch:
-        label_list.append(label_pipeline(_label))
-        processed_text = torch.tensor(text_pipeline(_text), dtype=torch.int64)
-        text_list.append(processed_text)
+def build_vocab(data_dir, max_size=20000):
+    words = []
+    for label in ['pos', 'neg']:
+        path = os.path.join(data_dir, label)
+        for fname in os.listdir(path)[:2000]: # 先取部分数据快速构建词表
+            with open(os.path.join(path, fname), 'r', encoding='utf-8') as f:
+                words.extend(tokenize(f.read()))
     
-    labels = torch.tensor(label_list, dtype=torch.float32)
-    # 对齐长度
-    texts = pad_sequence(text_list, batch_first=True, padding_value=vocab["<pad>"])
-    return texts.to(DEVICE), labels.to(DEVICE)
+    counter = Counter(words)
+    # 预留 0 给 padding, 1 给 unknown
+    vocab = {word: i+2 for i, (word, _) in enumerate(counter.most_common(max_size))}
+    return vocab
 
-# 创建 DataLoader
-train_iter, test_iter = IMDB() # 重新获取迭代器
-train_dataloader = DataLoader(list(train_iter), batch_size=BATCH_SIZE, shuffle=True, collate_fn=collate_batch)
-test_dataloader = DataLoader(list(test_iter), batch_size=BATCH_SIZE, shuffle=False, collate_fn=collate_batch)
+print("构建词汇表中...")
+VOCAB = build_vocab(DATA_DIR / "aclImdb" / "train")
+VOCAB_SIZE = len(VOCAB) + 2
 
-# --- 3. 定义模型 ---
+# --- 3. 自定义 Dataset ---
+class IMDBDataset(Dataset):
+    def __init__(self, root_dir, split, vocab, max_len=200):
+        self.data = []
+        self.max_len = max_len
+        self.vocab = vocab
+        for label_val, label_name in enumerate(['neg', 'pos']):
+            path = os.path.join(root_dir, split, label_name)
+            for fname in os.listdir(path):
+                with open(os.path.join(path, fname), 'r', encoding='utf-8') as f:
+                    tokens = tokenize(f.read())
+                    # 转索引
+                    ids = [vocab.get(t, 1) for t in tokens][:max_len]
+                    # Padding
+                    if len(ids) < max_len:
+                        ids += [0] * (max_len - len(ids))
+                    self.data.append((torch.tensor(ids), torch.tensor(label_val, dtype=torch.float32)))
+
+    def __len__(self):
+        return len(self.data)
+
+    def __getitem__(self, idx):
+        return self.data[idx]
+
+print("加载数据到内存中 (这可能需要一分钟)...")
+train_ds = IMDBDataset("aclImdb", "train", VOCAB)
+train_loader = DataLoader(train_ds, batch_size=64, shuffle=True)
+
+# --- 4. 简单 RNN 模型 ---
 class SimpleRNN(nn.Module):
-    def __init__(self, vocab_size, emb_dim, hid_dim, output_dim):
+    def __init__(self, vocab_size, emb_dim, hid_dim):
         super().__init__()
         self.embedding = nn.Embedding(vocab_size, emb_dim)
         self.rnn = nn.RNN(emb_dim, hid_dim, batch_first=True)
-        self.fc = nn.Linear(hid_dim, output_dim)
+        self.fc = nn.Linear(hid_dim, 1)
         
-    def forward(self, text):
-        embedded = self.embedding(text)
-        # RNN 返回: output (所有步骤状态), hidden (最后一步状态)
-        output, hidden = self.rnn(embedded)
-        # 取最后一步的隐藏状态: hidden 形状为 [1, batch, hid_dim]
+    def forward(self, x):
+        x = self.embedding(x)
+        _, hidden = self.rnn(x)
         return self.fc(hidden.squeeze(0))
 
-model = SimpleRNN(len(vocab), EMBEDDING_DIM, HIDDEN_DIM, 1).to(DEVICE)
-optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
+# --- 5. 训练循环 ---
+DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+model = SimpleRNN(VOCAB_SIZE, 100, 128).to(DEVICE)
+optimizer = optim.Adam(model.parameters(), lr=0.001)
 criterion = nn.BCEWithLogitsLoss()
 
-# --- 4. 训练与评估函数 ---
-def train(dataloader):
+print(f"开始训练 (设备: {DEVICE})...")
+for epoch in range(3):
     model.train()
-    total_acc, total_count = 0, 0
-    for texts, labels in dataloader:
+    for texts, labels in train_loader:
+        texts, labels = texts.to(DEVICE), labels.to(DEVICE)
         optimizer.zero_grad()
-        predicted = model(texts).squeeze(1)
-        loss = criterion(predicted, labels)
+        outputs = model(texts).squeeze(1)
+        loss = criterion(outputs, labels)
         loss.backward()
         optimizer.step()
-        
-        # 计算准确率
-        acc = ((torch.sigmoid(predicted) > 0.5) == labels).sum().item()
-        total_acc += acc
-        total_count += labels.size(0)
-    return total_acc / total_count
-
-def evaluate(dataloader):
-    model.eval()
-    total_acc, total_count = 0, 0
-    with torch.no_grad():
-        for texts, labels in dataloader:
-            predicted = model(texts).squeeze(1)
-            acc = ((torch.sigmoid(predicted) > 0.5) == labels).sum().item()
-            total_acc += acc
-            total_count += labels.size(0)
-    return total_acc / total_count
-
-# --- 5. 执行运行 ---
-print(f"开始在 {DEVICE} 上训练...")
-for epoch in range(1, EPOCHS + 1):
-    start_time = time.time()
-    train_acc = train(train_dataloader)
-    test_acc = evaluate(test_dataloader)
-    
-    print(f'Epoch: {epoch} | 耗时: {time.time()-start_time:.1f}s')
-    print(f'\t训练准确率: {train_acc*100:.2f}% | 测试准确率: {test_acc*100:.2f}%')
+    print(f"Epoch {epoch+1} 完成，Loss: {loss.item():.4f}")
