@@ -69,7 +69,7 @@ class IMDBDataset(Dataset):
         return self.data[idx]
 
 print("加载数据到内存中 (这可能需要一分钟)...")
-train_ds = IMDBDataset("aclImdb", "train", VOCAB)
+train_ds = IMDBDataset(DATA_DIR / "aclImdb", "train", VOCAB)
 train_loader = DataLoader(train_ds, batch_size=64, shuffle=True)
 
 # --- 4. 简单 RNN 模型 ---
