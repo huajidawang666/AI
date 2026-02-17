@@ -14,7 +14,7 @@ DATA_DIR = config.DATA_DIR / "IMDB"
 DATA_DIR.mkdir(parents=True, exist_ok=True)
 DATA_PATH = config.DATA_DIR / "IMDB" / "aclImdb_v1.tar.gz"
 
-if not os.path.exists("aclImdb"):
+if not os.path.exists(DATA_DIR/"aclImdb"):
     print("正在下载 IMDB 数据集...")
     r = requests.get(DATA_URL, stream=True)
     with open(DATA_PATH, 'wb') as f:
