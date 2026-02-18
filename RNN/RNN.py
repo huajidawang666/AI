@@ -74,17 +74,37 @@ train_ds = IMDBDataset(DATA_DIR / "aclImdb", "train", VOCAB)
 train_loader = DataLoader(train_ds, batch_size=64, shuffle=True)
 
 # --- 4. 简单 RNN 模型 ---
+
+class RNNLayer(nn.Module):
+    def __init__(self, emb_dim, hid_dim):
+        super().__init__()
+        self.emb_dim = emb_dim
+        self.hid_dim = hid_dim
+        self.Wx = nn.Linear(emb_dim, hid_dim)
+        self.Wh = nn.Linear(hid_dim, hid_dim)
+        self.activation = nn.Tanh()
+        
+    def forward(self, x, hidden=None):
+        batch_size, seq_len, _ = x.size()
+        outputs = [] # 
+        if hidden is None:
+            hidden = torch.zeros(batch_size, self.hid_dim, device=x.device)
+        for t in range(seq_len):
+            hidden = self.activation(self.Wx(x[:, t, :]) + self.Wh(hidden))
+            outputs.append(hidden.unsqueeze(1)) # (batch_size, 1, hid_dim)
+        return torch.cat(outputs, dim=1), hidden
+
 class SimpleRNN(nn.Module):
     def __init__(self, vocab_size, emb_dim, hid_dim):
         super().__init__()
         self.embedding = nn.Embedding(vocab_size, emb_dim)
-        self.rnn = nn.RNN(emb_dim, hid_dim, batch_first=True)
+        self.rnn = RNNLayer(emb_dim, hid_dim)
         self.fc = nn.Linear(hid_dim, 1)
         
     def forward(self, x):
         x = self.embedding(x)
         _, hidden = self.rnn(x)
-        return self.fc(hidden.squeeze(0))
+        return self.fc(hidden)
 
 # --- 5. 训练循环 ---
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
