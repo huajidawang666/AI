@@ -15,7 +15,7 @@ class SimpleRNN(nn.Module):
     def forward(self, x):
         x = self.embedding(x)
         _, hidden = self.rnn(x)
-        return self.fc(hidden)
+        return self.fc(hidden.squeeze(0))
 
 
 

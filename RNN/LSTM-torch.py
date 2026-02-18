@@ -9,13 +9,13 @@ class SimpleLSTM(nn.Module):
     def __init__(self, vocab_size, emb_dim, hid_dim):
         super().__init__()
         self.embedding = nn.Embedding(vocab_size, emb_dim)
-        self.rnn = nn.LSTM(emb_dim, hid_dim, batch_first=True)
+        self.lstm = nn.LSTM(emb_dim, hid_dim, batch_first=True)
         self.fc = nn.Linear(hid_dim, 1)
         
     def forward(self, x):
         x = self.embedding(x)
-        _, _, hidden = self.rnn(x)
-        return self.fc(hidden)
+        _, (hidden, _) = self.lstm(x)
+        return self.fc(hidden.squeeze(0))
 
 
 
