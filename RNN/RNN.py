@@ -122,6 +122,7 @@ for epoch in range(50):
         outputs = model(texts).squeeze(1)
         loss = criterion(outputs, labels)
         loss.backward()
+        torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=5.0) # 防止梯度爆炸
         optimizer.step()
         
         with torch.no_grad():
