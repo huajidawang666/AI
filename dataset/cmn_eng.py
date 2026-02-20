@@ -8,7 +8,7 @@ from collections import Counter
 
 # --- 1. 数据预处理类 ---
 class TranslationDataset(Dataset):
-    def __init__(self, file_path, max_vocab_size=5000):
+    def __init__(self, file_path, max_vocab_size=50000):
         self.en_sentences = []
         self.zh_sentences = []
 
