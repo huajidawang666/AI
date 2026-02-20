@@ -32,7 +32,7 @@ def shift_targets(tgt_batch, pad_idx=PAD_IDX):
 if __name__ == "__main__":
     file_path = config.DATA_DIR / 'ANKI' / 'cmn-eng' / 'cmn.txt'
     try:
-        loader, en_v, zh_v = get_dataloader(file_path)
+        loader, en_v, zh_v = get_dataloader(file_path, batch_size=1024)
         DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
         model = Transformer(
@@ -53,34 +53,50 @@ if __name__ == "__main__":
         scaler = torch.amp.GradScaler('cuda')
 
         print(f"开始训练 (设备: {DEVICE}) ...")
+        print(f"开始训练 (设备: {DEVICE}) ...")
         for epoch in range(1, EPOCHS + 1):
             model.train()
-            total_loss = 0.0
-            total_tokens = 0
-
+            epoch_loss = 0.0
+            
             for src_batch, tgt_batch in loader:
                 src_batch = src_batch.to(DEVICE)
                 tgt_batch = tgt_batch.to(DEVICE)
 
+                # 准备 Teacher Forcing 输入输出
                 tgt_in, tgt_out = shift_targets(tgt_batch, PAD_IDX)
 
                 optimizer.zero_grad(set_to_none=True)
+                
+                # 混合精度加速
                 with torch.amp.autocast('cuda'):
+                    # 确保你的 Transformer model 内部处理了 Padding Mask 和 Sequence Mask
                     logits = model(src_batch, tgt_in, src_pad_idx=PAD_IDX, tgt_pad_idx=PAD_IDX)
-                    vocab_size = logits.size(-1)
-                    loss = criterion(logits.view(-1, vocab_size), tgt_out.reshape(-1))
+                    
+                    # 展平进行交叉熵计算
+                    # logits: (batch * (seq_len-1), vocab_size)
+                    # tgt_out: (batch * (seq_len-1))
+                    loss = criterion(logits.reshape(-1, logits.size(-1)), tgt_out.reshape(-1))
 
+                # 反向传播
                 scaler.scale(loss).backward()
-                torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=5.0)
+                
+                # 梯度裁剪防止梯度爆炸
+                scaler.unscale_(optimizer)
+                torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0) # 通常 1.0 比较常用
+                
                 scaler.step(optimizer)
                 scaler.update()
 
-                non_pad = (tgt_out != PAD_IDX).sum().item()
-                total_loss += loss.item() * max(non_pad, 1)
-                total_tokens += max(non_pad, 1)
+                epoch_loss += loss.item()
+                
+            if epoch % 5 == 0:
+                torch.save(model.state_dict(), f"transformer_epoch_{epoch}.pt")
 
-            avg_loss = total_loss / max(total_tokens, 1)
-            print(f"Epoch {epoch}/{EPOCHS} - Loss: {avg_loss:.4f}")
+            avg_loss = epoch_loss / len(loader)
+            print(f"Epoch {epoch:02d}/{EPOCHS} | Loss: {avg_loss:.4f}")
+
+        # 保存最终模型
+        torch.save(model.state_dict(), "final_model.pt")
 
         # Quick sample batch preview
         en_example, zh_example = next(iter(loader))
