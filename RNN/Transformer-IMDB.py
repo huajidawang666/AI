@@ -21,6 +21,7 @@ model = TransformerClassifier(num_layers=NUM_LAYERS,
                               num_heads=NUM_HEADS,
                               num_classes=1,
                               max_len=MAX_LEN).to(DEVICE)
+torch.compile(model)
 optimizer = optim.Adam(model.parameters(), lr=1e-4)
 criterion = nn.BCEWithLogitsLoss()
 
@@ -41,12 +42,16 @@ for epoch in range(50):
     metric = Accumulator(3)  # 记录总损失和样本数
     for texts, labels in train_loader:
         texts, labels = texts.to(DEVICE), labels.to(DEVICE).float()
-        optimizer.zero_grad()
-        outputs = model(texts).squeeze(-1)
-        loss = criterion(outputs, labels)
-        loss.backward()
+        scaler = torch.amp.GradScaler('cuda')
+        with torch.amp.autocast('cuda'):
+            optimizer.zero_grad(set_to_none=True)
+            outputs = model(texts).squeeze(-1)
+            loss = criterion(outputs, labels)
         torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=5.0) # 防止梯度爆炸
-        optimizer.step()        
+        scaler.scale(loss).backward()
+        scaler.step(optimizer)
+        scaler.update()
+         
         with torch.no_grad():
             acc = ((outputs > 0) == (labels > 0.5)).sum().item()            
             metric.add(loss.item() * labels.size(0), acc, labels.size(0))

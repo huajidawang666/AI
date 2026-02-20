@@ -279,6 +279,7 @@ class TransformerClassifier(nn.Module):
         )
         
         self.make_mask = lambda src, pad_idx=0: (src != pad_idx).unsqueeze(1).unsqueeze(2)
+        self.final_norm = nn.LayerNorm(d_model)
 
     def forward(self, src, pad_idx=0):
         src_mask = self.make_mask(src, pad_idx)
@@ -286,4 +287,4 @@ class TransformerClassifier(nn.Module):
         
         pooled_out = torch.mean(enc_out, dim=1) 
         
-        return self.classifier(pooled_out)
+        return self.classifier(self.final_norm(pooled_out))
