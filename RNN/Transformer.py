@@ -207,7 +207,7 @@ class Decoder(nn.Module):
             x = layer(x, enc_out, src_mask, tgt_mask)
         return x
 
-class FullEmbeddingTransformer(nn.Module):
+class Transformer(nn.Module):
     def __init__(self, num_layers, src_vocab_size, tgt_vocab_size, d_model, d_ff, num_heads, max_len=MAX_LEN, dropout=DROPOUT, bi_embedded=False, full_embedded=False):
         super().__init__()
         self.src_embedding = nn.Embedding(src_vocab_size, d_model)
@@ -265,4 +265,25 @@ class FullEmbeddingTransformer(nn.Module):
         dec_out = self.decoder(tgt, enc_out, src_mask, tgt_mask)
         
         return self.output_proj(dec_out) # (batch, seq, vocab_size)
-    
+
+class TransformerClassifier(nn.Module):
+    def __init__(self, num_layers, vocab_size, d_model, d_ff, num_heads, num_classes=2, max_len=MAX_LEN, dropout=DROPOUT):
+        super().__init__()
+        self.encoder = Encoder(num_layers, vocab_size, d_model, d_ff, num_heads, None, max_len, dropout)
+        
+        self.classifier = nn.Sequential(
+            nn.Linear(d_model, d_model),
+            nn.ReLU(),
+            nn.Dropout(dropout),
+            nn.Linear(d_model, num_classes)
+        )
+        
+        self.make_mask = lambda src, pad_idx=0: (src != pad_idx).unsqueeze(1).unsqueeze(2)
+
+    def forward(self, src, pad_idx=0):
+        src_mask = self.make_mask(src, pad_idx)
+        enc_out = self.encoder(src, src_mask)
+        
+        pooled_out = torch.mean(enc_out, dim=1) 
+        
+        return self.classifier(pooled_out)
