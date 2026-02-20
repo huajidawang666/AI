@@ -285,6 +285,10 @@ class TransformerClassifier(nn.Module):
         src_mask = self.make_mask(src, pad_idx)
         enc_out = self.encoder(src, src_mask)
         
-        pooled_out = torch.mean(enc_out, dim=1) 
+        mask = (src != pad_idx).unsqueeze(-1) # (batch, seq, 1)
+        masked_out = enc_out * mask
+        sum_out = torch.sum(masked_out, dim=1)
+        count = mask.sum(dim=1)
+        pooled_out = sum_out / count
         
         return self.classifier(self.final_norm(pooled_out))
