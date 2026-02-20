@@ -1,5 +1,5 @@
 import torch
-from dataset.IMDB import load_IMDB_dataset
+from dataset.IMDB_CLS import load_IMDB_dataset
 from torch import device, nn, optim
 from utils.metric import Accumulator
 from RNN.Transformer import TransformerClassifier
