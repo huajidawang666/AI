@@ -30,7 +30,7 @@ def shift_targets(tgt_batch, pad_idx=PAD_IDX):
     return tgt_in, tgt_out
 
 if __name__ == "__main__":
-    file_path = config.DATA_DIR / 'data' / 'ANKI' / 'cmn.txt'
+    file_path = config.DATA_DIR / 'ANKI' / 'cmn-eng' / 'cmn.txt'
     try:
         loader, en_v, zh_v = get_dataloader(file_path)
         DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")

@@ -80,7 +80,7 @@ def get_dataloader(file_path, batch_size=32):
 # --- 4. 测试运行 ---
 if __name__ == "__main__":
     # 假设你已经下载了 cmn.txt
-    file_path = config.DATA_DIR / 'data' / 'ANKI' / 'cmn.txt'
+    file_path = config.DATA_DIR / 'ANKI' / 'cmn-eng' / 'cmn.txt'
     try:
         loader, en_v, zh_v = get_dataloader(file_path)
         en_example, zh_example = next(iter(loader))
