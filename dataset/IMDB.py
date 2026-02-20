@@ -65,7 +65,7 @@ class IMDBDataset(Dataset):
         return self.data[idx]
 
 
-def load_IMDB_dataset(max_len=200):
+def load_IMDB_dataset(batch_size=256, max_len=200):
     _download_IMDB_dataset()
     
     print("构建词汇表中...")
@@ -75,6 +75,6 @@ def load_IMDB_dataset(max_len=200):
     print("加载数据到内存中 (这可能需要一分钟)...")
     train_ds = IMDBDataset(DATA_DIR / "aclImdb", "train", VOCAB, max_len)
     test_ds = IMDBDataset(DATA_DIR / "aclImdb", "test", VOCAB, max_len)
-    train_loader = DataLoader(train_ds, batch_size=64, shuffle=True)
-    test_loader = DataLoader(test_ds, batch_size=64, shuffle=False)
+    train_loader = DataLoader(train_ds, batch_size=batch_size, shuffle=True)
+    test_loader = DataLoader(test_ds, batch_size=batch_size, shuffle=False)
     return train_loader, test_loader, VOCAB_SIZE

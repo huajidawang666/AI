@@ -13,7 +13,7 @@ NUM_HEADS = 8
 MAX_LEN = 200
 
 DEVICE = device("cuda" if torch.cuda.is_available() else "cpu")
-train_loader, test_loader, VOCAB_SIZE = load_IMDB_dataset(MAX_LEN)
+train_loader, test_loader, VOCAB_SIZE = load_IMDB_dataset(batch_size=256, max_len=MAX_LEN)
 model = TransformerClassifier(num_layers=NUM_LAYERS,
                               vocab_size=VOCAB_SIZE,
                               d_model=D_MODEL,
@@ -22,7 +22,7 @@ model = TransformerClassifier(num_layers=NUM_LAYERS,
                               num_classes=1,
                               max_len=MAX_LEN).to(DEVICE)
 torch.compile(model)
-optimizer = optim.Adam(model.parameters(), lr=1e-4)
+optimizer = optim.AdamW(model.parameters(), lr=1e-4)
 criterion = nn.BCEWithLogitsLoss()
 
 def validation(model, dataloader):
