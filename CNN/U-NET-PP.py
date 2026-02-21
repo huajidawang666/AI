@@ -10,8 +10,8 @@ Reference:
 Zhou et al., "UNet++: A Nested U-Net Architecture for Medical Image Segmentation" (2018).
 """
 
-from typing import List, Tuple, Union
-
+from typing import Tuple, Union
+import tqdm
 from torchvision.transforms import v2
 from dataset.MoNuSeg import MoNuSegDataset
 import torch
@@ -133,7 +133,7 @@ class NestedUNet(nn.Module):
 
         return self.final4(x0_4)
 
-def get_dataloader(batch_size: int = 64):
+def get_dataloader(batch_size: int = 32):
     train_transforms = v2.Compose([
         v2.ToImage(),
         v2.ToDtype(torch.float32, scale=True)
@@ -158,7 +158,7 @@ if __name__ == "__main__":
     
     for epoch in range(NUM_EPOCHS):
         model.train()
-        for images, masks in dataloader:
+        for images, masks in tqdm.tqdm(dataloader):
             images, masks = images.to(device), masks.to(device)
             targets = torch.argmax(masks, dim=1)  # Assuming masks are one-hot encoded
             outputs = model(images)
