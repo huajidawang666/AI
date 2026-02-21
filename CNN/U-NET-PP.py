@@ -144,7 +144,9 @@ def get_dataloader(batch_size: int = 64):
 dataloader = get_dataloader()
 # quick test
 if __name__ == "__main__":
+    print("Testing NestedUNet with a batch from the dataloader...")
     model = NestedUNet(in_channels=3, num_classes=1, deep_supervision=True)
+    print("loaded model, now running a forward pass with one batch...")
     for images, masks in dataloader:
         outputs = model(images)
         print(f"Input shape: {images.shape}")
