@@ -179,7 +179,10 @@ if __name__ == "__main__":
                 lr_scheduler.step()
             
             print(f"Epoch {epoch+1}, Loss: {loss.item():.4f}")
-            
+    
+    # save model
+    torch.save(model.state_dict(), "nested_unet.pth")
+    
     # simple test
     model.eval()
     with torch.no_grad():
