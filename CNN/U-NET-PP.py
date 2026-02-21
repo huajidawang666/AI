@@ -11,7 +11,6 @@ Zhou et al., "UNet++: A Nested U-Net Architecture for Medical Image Segmentation
 """
 
 from typing import Tuple, Union
-import tqdm
 from torchvision.transforms import v2
 from dataset.MoNuSeg import MoNuSegDataset
 import torch
@@ -133,7 +132,7 @@ class NestedUNet(nn.Module):
 
         return self.final4(x0_4)
 
-def get_dataloader(batch_size: int = 32):
+def get_dataloader(batch_size: int = 16):
     train_transforms = v2.Compose([
         v2.ToImage(),
         v2.ToDtype(torch.float32, scale=True)
@@ -150,27 +149,31 @@ if __name__ == "__main__":
     
     model = NestedUNet(in_channels=3, num_classes=3, deep_supervision=True)
     model.to(device)
+    torch.compile(model)
     
     weights = torch.tensor([1.0, 1.0, 2.0]).to(device)
     criterion = nn.CrossEntropyLoss(weight=weights)
-    
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
+    lr_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=NUM_EPOCHS * len(dataloader) // 2)
+    scaler = torch.amp.GradScaler('cuda')
     
     for epoch in range(NUM_EPOCHS):
         model.train()
-        for images, masks in tqdm.tqdm(dataloader):
-            images, masks = images.to(device), masks.to(device)
-            targets = torch.argmax(masks, dim=1)  # Assuming masks are one-hot encoded
-            outputs = model(images)
+        for images, masks in dataloader:
+            with torch.amp.autocast('cuda'):
+                images, masks = images.to(device), masks.to(device)
+                targets = torch.argmax(masks, dim=1)  # Assuming masks are one-hot encoded
+                outputs = model(images)
             
-            if isinstance(outputs, tuple):
-                loss = sum(criterion(out, targets) for out in outputs) / len(outputs)
-            else:
-                loss = criterion(outputs, targets)
-            
-            optimizer.zero_grad()
-            loss.backward()
-            optimizer.step()
+                if isinstance(outputs, tuple):
+                    loss = sum(criterion(out, targets) for out in outputs) / len(outputs)
+                else:
+                    loss = criterion(outputs, targets)
+                
+                optimizer.zero_grad()
+                scaler.scale(loss).backward()
+                scaler.step(optimizer)
+                scaler.update()
             
             print(f"Epoch {epoch+1}, Loss: {loss.item():.4f}")
     
