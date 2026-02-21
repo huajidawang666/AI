@@ -174,6 +174,7 @@ if __name__ == "__main__":
                 scaler.scale(loss).backward()
                 scaler.step(optimizer)
                 scaler.update()
+                lr_scheduler.step()
             
             print(f"Epoch {epoch+1}, Loss: {loss.item():.4f}")
     
