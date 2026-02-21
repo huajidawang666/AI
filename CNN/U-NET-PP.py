@@ -14,6 +14,8 @@ from typing import Tuple, Union
 from torchvision.transforms import v2
 from dataset.MoNuSeg import MoNuSegDataset
 import torch
+import config
+import cv2
 from torch import nn
 import torch.nn.functional as F
 
@@ -132,12 +134,12 @@ class NestedUNet(nn.Module):
 
         return self.final4(x0_4)
 
-def get_dataloader(batch_size: int = 16):
-    train_transforms = v2.Compose([
+train_transforms = v2.Compose([
         v2.ToImage(),
         v2.ToDtype(torch.float32, scale=True)
     ])
-    
+
+def get_dataloader(batch_size: int = 16):
     dataset = MoNuSegDataset(transform=train_transforms)
     dataloader = torch.utils.data.DataLoader(dataset, batch_size=batch_size, shuffle=True)
     return dataloader
@@ -177,5 +179,16 @@ if __name__ == "__main__":
                 lr_scheduler.step()
             
             print(f"Epoch {epoch+1}, Loss: {loss.item():.4f}")
+            
+    # simple test
+    model.eval()
+    with torch.no_grad():
+        path = config.DATA_DIR / 'MoNuSeg' / 'patches' / 'images' / 'TCGA-18-5592-01Z-00-DX1_0_0.png'
+        image = cv2.imread(str(path))
+        image = train_transforms(image).unsqueeze(0).to(device)  # Add batch dimension
+        output = model(image)
+        output = output[0] if isinstance(output, tuple) else output  # Use first output if deep supervision
+        pred_mask = torch.argmax(output, dim=1).squeeze(0).cpu().numpy()  # Convert to numpy for visualization
+        cv2.imwrite(str(config.DATA_DIR / 'TCGA-18-5592-01Z-00-DX1_0_0_pred.png'), pred_mask.astype('uint8') * 255)
     
     
