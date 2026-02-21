@@ -18,6 +18,8 @@ import torch
 from torch import nn
 import torch.nn.functional as F
 
+NUM_EPOCHS = 10
+
 class ConvBlock(nn.Module):
     def __init__(self, in_ch: int, out_ch: int, norm: str = "bn"):
         super().__init__()
@@ -144,11 +146,32 @@ def get_dataloader(batch_size: int = 64):
 dataloader = get_dataloader()
 # quick test
 if __name__ == "__main__":
-    print("Testing NestedUNet with a batch from the dataloader...")
-    model = NestedUNet(in_channels=3, num_classes=1, deep_supervision=True)
-    print("loaded model, now running a forward pass with one batch...")
-    for images, masks in dataloader:
-        outputs = model(images)
-        print(f"Input shape: {images.shape}")
-        print(f"Output shapes: {[out.shape for out in outputs]}")
-        break
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    
+    model = NestedUNet(in_channels=3, num_classes=3, deep_supervision=True)
+    model.to(device)
+    
+    weights = torch.tensor([1.0, 1.0, 2.0]).to(device)
+    criterion = nn.CrossEntropyLoss(weight=weights)
+    
+    optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
+    
+    for epoch in range(NUM_EPOCHS):
+        model.train()
+        for images, masks in dataloader:
+            images, masks = images.to(device), masks.to(device)
+            targets = torch.argmax(masks, dim=1)  # Assuming masks are one-hot encoded
+            outputs = model(images)
+            
+            if isinstance(outputs, tuple):
+                loss = sum(criterion(out, targets) for out in outputs) / len(outputs)
+            else:
+                loss = criterion(outputs, targets)
+            
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
+            
+            print(f"Epoch {epoch+1}, Loss: {loss.item():.4f}")
+    
+    
