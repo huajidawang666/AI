@@ -243,7 +243,9 @@ if __name__ == "__main__":
     with torch.no_grad():
         path = config.DATA_DIR / 'MoNuSeg' / 'patches' / 'images' / 'TCGA-18-5592-01Z-00-DX1_0_0.png'
         image = cv2.imread(str(path))
-        image = image_transforms(image).unsqueeze(0).to(device)  # Add batch dimension
+        image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+        image_tensor = torch.from_numpy(image.transpose(2, 0, 1))  # Convert to (C, H, W)
+        image = image_transforms(image_tensor).unsqueeze(0).to(device)  # Add batch dimension
         output = model(image)
         output = output[0] if isinstance(output, tuple) else output  # Use first output if deep supervision
         indices = torch.argmax(output, dim=1)  # Convert to numpy for visualization
