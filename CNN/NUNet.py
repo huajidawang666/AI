@@ -168,7 +168,8 @@ sync_transforms = v2.Compose([
 
 image_transforms = v2.Compose([
     v2.ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2, hue=0.1),
-    v2.ToDtype(torch.float32, scale=True)
+    v2.ToDtype(torch.float32, scale=True),
+    v2.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
 ])
 
 def get_dataloader(batch_size: int = 16):
@@ -242,7 +243,7 @@ if __name__ == "__main__":
     with torch.no_grad():
         path = config.DATA_DIR / 'MoNuSeg' / 'patches' / 'images' / 'TCGA-18-5592-01Z-00-DX1_0_0.png'
         image = cv2.imread(str(path))
-        image = train_transforms(image).unsqueeze(0).to(device)  # Add batch dimension
+        image = image_transforms(image).unsqueeze(0).to(device)  # Add batch dimension
         output = model(image)
         output = output[0] if isinstance(output, tuple) else output  # Use first output if deep supervision
         indices = torch.argmax(output, dim=1)  # Convert to numpy for visualization
