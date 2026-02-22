@@ -208,7 +208,10 @@ if __name__ == "__main__":
                 if isinstance(outputs, tuple):
                     # out: (B, 3, H, W)
                     # labels: (B, H, W)
-                    loss = sum((criterion_CE(out, labels) + criterion_Dice(out, labels)) for out in outputs) / len(outputs)
+                    loss_ce = sum(criterion_CE(out, labels) for out in outputs) / len(outputs)
+                    loss_dice = sum(criterion_Dice(out, labels) for out in outputs) / len(outputs)
+                    loss = loss_ce + loss_dice
+                    
                 else:
                     loss_ce = criterion_CE(outputs, labels)
                     loss_dice = criterion_Dice(outputs, labels)
