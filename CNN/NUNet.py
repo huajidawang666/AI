@@ -249,6 +249,6 @@ if __name__ == "__main__":
         output = model(image)
         output = output[0] if isinstance(output, tuple) else output  # Use first output if deep supervision
         indices = torch.argmax(output, dim=1)  # Convert to numpy for visualization
-        pred_mask = F.one_hot(indices, num_classes=3) * 255.0
-        cv2.imwrite(str(config.DATA_DIR / 'TCGA-18-5592-01Z-00-DX1_0_0_pred.png'), pred_mask.astype('uint8') * 255)
+        pred_mask = F.one_hot(indices, num_classes=3).squeeze(0).permute(1, 2, 0) * 255.0  # Convert to (H, W, C) and scale to [0, 255]
+        cv2.imwrite(str(config.DATA_DIR / 'TCGA-18-5592-01Z-00-DX1_0_0_pred.png'), pred_mask.cpu().numpy().astype('uint8'))
     
