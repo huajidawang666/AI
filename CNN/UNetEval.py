@@ -14,7 +14,6 @@ model.load_state_dict(state_dict)
 model.to(device)
 
 # simple test
-# simple test
 model.eval()
 with torch.no_grad():
     path = config.DATA_DIR / 'MoNuSeg' / 'patches' / 'images' / 'TCGA-18-5592-01Z-00-DX1_0_0.png'
@@ -25,5 +24,7 @@ with torch.no_grad():
     output = model(image)
     output = output[0] if isinstance(output, tuple) else output  # Use first output if deep supervision
     indices = torch.argmax(output, dim=1)  # Convert to numpy for visualization
-    pred_mask = F.one_hot(indices, num_classes=3) * 255.0
-    cv2.imwrite(str(config.DATA_DIR / 'TCGA-18-5592-01Z-00-DX1_0_0_pred.png'), pred_mask.cpu().numpy().astype('uint8') * 255)
+    pred_mask = F.one_hot(indices, num_classes=3).squeeze(0) * 255.0  # Convert to (H, W, C) and scale to [0, 255]
+    final_mask = pred_mask.cpu().numpy().astype('uint8')
+    final_mask = cv2.cvtColor(final_mask, cv2.COLOR_RGB2BGR)  # Convert back to BGR for saving
+    cv2.imwrite(str(config.DATA_DIR / 'TCGA-18-5592-01Z-00-DX1_0_0_pred.png'), final_mask)

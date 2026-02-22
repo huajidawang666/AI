@@ -186,7 +186,7 @@ if __name__ == "__main__":
     model.to(device)
     torch.compile(model)
     
-    weights = torch.tensor([10.0, 5.0, 1.0]).to(device)
+    weights = torch.tensor([5.0, 1.5, 1.0]).to(device)
     criterion_CE = nn.CrossEntropyLoss(weight=weights)
     criterion_Dice = DiceLoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=5e-4)
@@ -249,6 +249,8 @@ if __name__ == "__main__":
         output = model(image)
         output = output[0] if isinstance(output, tuple) else output  # Use first output if deep supervision
         indices = torch.argmax(output, dim=1)  # Convert to numpy for visualization
-        pred_mask = F.one_hot(indices, num_classes=3).squeeze(0).permute(1, 2, 0) * 255.0  # Convert to (H, W, C) and scale to [0, 255]
-        cv2.imwrite(str(config.DATA_DIR / 'TCGA-18-5592-01Z-00-DX1_0_0_pred.png'), pred_mask.cpu().numpy().astype('uint8'))
+        pred_mask = F.one_hot(indices, num_classes=3).squeeze(0) * 255.0  # Convert to (H, W, C) and scale to [0, 255]
+        final_mask = pred_mask.cpu().numpy().astype('uint8')
+        final_mask = cv2.cvtColor(final_mask, cv2.COLOR_RGB2BGR)  # Convert back to BGR for saving
+        cv2.imwrite(str(config.DATA_DIR / 'TCGA-18-5592-01Z-00-DX1_0_0_pred.png'), final_mask)
     

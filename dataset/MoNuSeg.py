@@ -35,7 +35,7 @@ def xml_to_mask(xml_path, save_path, image_size=(1000, 1000)):
             pts = np.array([vertices], dtype=np.int32)
             cv2.fillPoly(inside_mask, pts, 255)
             # erode
-            kernel = np.ones((3, 3), dtype=np.uint8)
+            kernel = np.ones((5, 5), dtype=np.uint8)
             eroded_cell = cv2.erode(inside_mask, kernel, iterations=1)
             # boundary
             edge_cell = cv2.absdiff(inside_mask, eroded_cell)
