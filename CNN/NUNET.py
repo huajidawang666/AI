@@ -197,7 +197,8 @@ if __name__ == "__main__":
         image = train_transforms(image).unsqueeze(0).to(device)  # Add batch dimension
         output = model(image)
         output = output[0] if isinstance(output, tuple) else output  # Use first output if deep supervision
-        pred_mask = torch.argmax(output, dim=1).squeeze(0).cpu().numpy()  # Convert to numpy for visualization
+        indices = torch.argmax(output, dim=1)  # Convert to numpy for visualization
+        pred_mask = F.one_hot(indices, num_classes=3) * 255.0
         cv2.imwrite(str(config.DATA_DIR / 'TCGA-18-5592-01Z-00-DX1_0_0_pred.png'), pred_mask.astype('uint8') * 255)
     
     
