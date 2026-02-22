@@ -3,6 +3,7 @@ import numpy as np
 import cv2
 import xml.etree.ElementTree as ET
 import logging
+from torchvision import tv_tensors
 from torch.utils.data import Dataset, DataLoader
 
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -109,7 +110,13 @@ class MoNuSegDataset(Dataset):
     
     def __getitem__(self, idx):
         image = cv2.imread(str(self.image_paths[idx]))
+        image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
         mask = cv2.imread(str(self.mask_paths[idx]))
+        mask = cv2.cvtColor(mask, cv2.COLOR_BGR2RGB)
+        
+        image = tv_tensors.Image(image.transpose(2, 0, 1))
+        mask = tv_tensors.Mask(mask.transpose(2, 0, 1))
+        
         if self.transform:
             image, mask = self.transform(image, mask)
         return image, mask

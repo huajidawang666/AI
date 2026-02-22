@@ -18,9 +18,10 @@ import torch
 import config
 import cv2
 from torch import nn
+from datetime import datetime
 import torch.nn.functional as F
 
-NUM_EPOCHS = 10
+NUM_EPOCHS = 50
 
 class ConvBlock(nn.Module):
     def __init__(self, in_ch: int, out_ch: int, norm: str = "bn"):
@@ -47,7 +48,6 @@ class ConvBlock(nn.Module):
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         return self.block(x)
-
 
 class NestedUNet(nn.Module):
     def __init__(
@@ -135,7 +135,35 @@ class NestedUNet(nn.Module):
 
         return self.final4(x0_4)
 
+class DiceLoss(nn.Module):
+    def __init__(self, smooth=1e-6):
+        super(DiceLoss, self).__init__()
+        self.smooth = smooth
+
+    def forward(self, logits, targets):
+        """
+        logits: [N, C, H, W] 模型的原始输出
+        targets: [N, H, W] 或 [N, C, H, W] 的 one-hot 标签
+        """
+        probs = F.softmax(logits, dim=1)
+        
+        if targets.dim() == 3:
+            targets = F.one_hot(targets, num_classes=logits.size(1)).permute(0, 3, 1, 2).float()
+        
+        dims = (0, 2, 3)
+        intersection = torch.sum(probs * targets, dims)
+        cardinality = torch.sum(probs + targets, dims)
+        
+        dice_score = (2. * intersection + self.smooth) / (cardinality + self.smooth)
+        
+        return 1 - dice_score.mean()
+
+
 train_transforms = v2.Compose([
+        v2.RandomRotation(degrees=15),
+        v2.RandomVerticalFlip(p=0.5),
+        v2.RandomHorizontalFlip(p=0.5),
+        v2.ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2, hue=0.1),
         v2.ToImage(),
         v2.ToDtype(torch.float32, scale=True)
     ])
@@ -155,7 +183,8 @@ if __name__ == "__main__":
     torch.compile(model)
     
     weights = torch.tensor([1.0, 1.0, 2.0]).to(device)
-    criterion = nn.CrossEntropyLoss(weight=weights)
+    criterion_CE = nn.CrossEntropyLoss(weight=weights)
+    criterion_Dice = DiceLoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=5e-4)
     lr_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=NUM_EPOCHS * len(dataloader) // 2)
     scaler = torch.amp.GradScaler('cuda')
@@ -170,9 +199,9 @@ if __name__ == "__main__":
                 outputs = model(images)
             
                 if isinstance(outputs, tuple):
-                    loss = sum(criterion(out, targets) for out in outputs) / len(outputs)
+                    loss = sum((criterion_CE(out, targets) + criterion_Dice(out, targets)) for out in outputs) / len(outputs)
                 else:
-                    loss = criterion(outputs, targets)
+                    loss = criterion_CE(outputs, targets) + criterion_Dice(outputs, targets)
 
                 optimizer.zero_grad()
             scaler.scale(loss).backward()
@@ -187,7 +216,13 @@ if __name__ == "__main__":
         print(f"Epoch {epoch+1}, Loss: {metric[0] / metric[1]:.4f}")
     
     # save model
-    torch.save(model.state_dict(), "nested_unet.pth")
+    # Create a directory with a timestamp
+    timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
+    save_dir = config.LOG_DIR / 'NUNet-MoNuSeg' / timestamp
+    save_dir.mkdir(parents=True, exist_ok=True)
+    
+    torch.save(model.state_dict(), save_dir / "nested_unet.pth")
+    torch.save(model.state_dict(), config.LOG_DIR / 'NUNet-MoNuSeg' / "latest.pth")
     
     # simple test
     model.eval()
