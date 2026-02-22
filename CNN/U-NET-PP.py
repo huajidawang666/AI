@@ -13,6 +13,7 @@ Zhou et al., "UNet++: A Nested U-Net Architecture for Medical Image Segmentation
 from typing import Tuple, Union
 from torchvision.transforms import v2
 from dataset.MoNuSeg import MoNuSegDataset
+from utils.metric import Accumulator
 import torch
 import config
 import cv2
@@ -155,15 +156,16 @@ if __name__ == "__main__":
     
     weights = torch.tensor([1.0, 1.0, 2.0]).to(device)
     criterion = nn.CrossEntropyLoss(weight=weights)
-    optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
+    optimizer = torch.optim.Adam(model.parameters(), lr=5e-4)
     lr_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=NUM_EPOCHS * len(dataloader) // 2)
     scaler = torch.amp.GradScaler('cuda')
     
     for epoch in range(NUM_EPOCHS):
         model.train()
+        metric = Accumulator(2)
         for images, masks in dataloader:
+            images, masks = images.to(device), masks.to(device)
             with torch.amp.autocast('cuda'):
-                images, masks = images.to(device), masks.to(device)
                 targets = torch.argmax(masks, dim=1)  # Assuming masks are one-hot encoded
                 outputs = model(images)
             
@@ -171,14 +173,18 @@ if __name__ == "__main__":
                     loss = sum(criterion(out, targets) for out in outputs) / len(outputs)
                 else:
                     loss = criterion(outputs, targets)
-                
+
                 optimizer.zero_grad()
-                scaler.scale(loss).backward()
-                scaler.step(optimizer)
-                scaler.update()
-                lr_scheduler.step()
+            scaler.scale(loss).backward()
+            scaler.step(optimizer)
+            scaler.update()
+            lr_scheduler.step()
             
-            print(f"Epoch {epoch+1}, Loss: {loss.item():.4f}")
+            with torch.no_grad():
+                metric.add(loss.item() * images.size(0), images.size(0))
+                
+            
+        print(f"Epoch {epoch+1}, Loss: {metric[0] / metric[1]:.4f}")
     
     # save model
     torch.save(model.state_dict(), "nested_unet.pth")
