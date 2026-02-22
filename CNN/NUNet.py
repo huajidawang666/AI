@@ -12,6 +12,7 @@ Zhou et al., "UNet++: A Nested U-Net Architecture for Medical Image Segmentation
 
 from typing import Tuple, Union
 from torchvision.transforms import v2
+from tqdm import tqdm
 from dataset.MoNuSeg import MoNuSegDataset
 from utils.metric import Accumulator
 import torch
@@ -192,7 +193,7 @@ if __name__ == "__main__":
     for epoch in range(NUM_EPOCHS):
         model.train()
         metric = Accumulator(2)
-        for images, masks in dataloader:
+        for images, masks in tqdm(dataloader):
             images, masks = images.to(device), masks.to(device)
             with torch.amp.autocast('cuda'):
                 targets = torch.argmax(masks, dim=1)  # Assuming masks are one-hot encoded
