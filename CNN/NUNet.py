@@ -185,7 +185,7 @@ if __name__ == "__main__":
     model.to(device)
     torch.compile(model)
     
-    weights = torch.tensor([1.0, 1.0, 2.0]).to(device)
+    weights = torch.tensor([10.0, 5.0, 1.0]).to(device)
     criterion_CE = nn.CrossEntropyLoss(weight=weights)
     criterion_Dice = DiceLoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=5e-4)
@@ -194,7 +194,7 @@ if __name__ == "__main__":
     
     for epoch in range(NUM_EPOCHS):
         model.train()
-        metric = Accumulator(2)
+        metric = Accumulator(3)
         for images, labels in tqdm(dataloader):
             images, labels = images.to(device), labels.to(device)
             images, labels = sync_transforms(images, labels)
@@ -210,7 +210,9 @@ if __name__ == "__main__":
                     # labels: (B, H, W)
                     loss = sum((criterion_CE(out, labels) + criterion_Dice(out, labels)) for out in outputs) / len(outputs)
                 else:
-                    loss = criterion_CE(outputs, labels) + criterion_Dice(outputs, labels)
+                    loss_ce = criterion_CE(outputs, labels)
+                    loss_dice = criterion_Dice(outputs, labels)
+                    loss = loss_ce + loss_dice
 
             scaler.scale(loss).backward()
             scaler.step(optimizer)
@@ -218,10 +220,10 @@ if __name__ == "__main__":
             lr_scheduler.step()
             
             with torch.no_grad():
-                metric.add(loss.item() * images.size(0), images.size(0))
+                metric.add(loss_ce.item() * images.size(0), loss_dice.item() * images.size(0), images.size(0))
                 
             
-        print(f"Epoch {epoch+1}, Loss: {metric[0] / metric[1]:.4f}")
+        print(f"Epoch {epoch+1}, CE Loss: {metric[0] / metric[2]:.4f}, Dice Loss: {metric[1] / metric[2]:.4f}")
     
     # save model
     # Create a directory with a timestamp
