@@ -11,6 +11,7 @@ model = NestedUNet(in_channels=3, num_classes=3, deep_supervision=True)
 state_dict = torch.load(config.LOG_DIR / 'NUNet-MoNuSeg' / 'latest.pth',
                         map_location=device)
 model.load_state_dict(state_dict)
+model.to(device)
 
 # simple test
 model.eval()
