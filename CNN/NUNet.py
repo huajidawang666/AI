@@ -172,7 +172,7 @@ image_transforms = v2.Compose([
     v2.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
 ])
 
-def get_dataloader(batch_size: int = 16):
+def get_dataloader(batch_size: int = 32):
     dataset = MoNuSegDataset()
     dataloader = torch.utils.data.DataLoader(dataset, num_workers=8, batch_size=batch_size, shuffle=True, pin_memory=True)
     return dataloader
@@ -186,10 +186,10 @@ if __name__ == "__main__":
     model.to(device)
     torch.compile(model)
     
-    weights = torch.tensor([1.0, 2.0, 10.0]).to(device)
+    weights = torch.tensor([5.0, 2.0, 1.0]).to(device)
     criterion_CE = nn.CrossEntropyLoss(weight=weights)
     criterion_Dice = DiceLoss()
-    optimizer = torch.optim.Adam(model.parameters(), lr=5e-4)
+    optimizer = torch.optim.Adam(model.parameters(), lr=5e-2)
     lr_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=NUM_EPOCHS * len(dataloader) // 2)
     scaler = torch.amp.GradScaler('cuda')
     
