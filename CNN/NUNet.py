@@ -182,7 +182,7 @@ dataloader = get_dataloader()
 if __name__ == "__main__":
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     
-    model = NestedUNet(in_channels=3, num_classes=3, deep_supervision=True)
+    model = NestedUNet(in_channels=3, num_classes=3, deep_supervision=True, norm='gn')
     model.to(device)
     torch.compile(model)
     
