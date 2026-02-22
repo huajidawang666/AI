@@ -3,6 +3,7 @@ import numpy as np
 import cv2
 import xml.etree.ElementTree as ET
 import logging
+import torch
 from torchvision import tv_tensors
 from torch.utils.data import Dataset, DataLoader
 
@@ -111,15 +112,22 @@ class MoNuSegDataset(Dataset):
     def __getitem__(self, idx):
         image = cv2.imread(str(self.image_paths[idx]))
         image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-        mask = cv2.imread(str(self.mask_paths[idx]))
+        mask = cv2.imread(str(self.mask_paths[idx])) # mask shape: (H, W, 3), each channel is binary for background, inside, boundary
         mask = cv2.cvtColor(mask, cv2.COLOR_BGR2RGB)
         
-        image = tv_tensors.Image(image.transpose(2, 0, 1))
-        mask = tv_tensors.Mask(mask.transpose(2, 0, 1))
+        # deduce type explicitly
+        image: np.ndarray
+        mask: np.ndarray
+        
+        image_tensor = torch.from_numpy(image.transpose(2, 0, 1).copy())
+        label_tensor = torch.from_numpy(mask.transpose(2, 0, 1).argmax(axis=0, keepdims=True).astype(np.uint8).copy()) # Convert to (H, W) with class indices
+        
+        image = tv_tensors.Image(image_tensor)
+        label = tv_tensors.Mask(label_tensor)
         
         if self.transform:
-            image, mask = self.transform(image, mask)
-        return image, mask
+            image, label = self.transform(image, label)
+        return image, label
 
 if __name__ == "__main__":
     LABEL_PATH.mkdir(exist_ok=True, parents=True)

@@ -160,18 +160,20 @@ class DiceLoss(nn.Module):
         return 1 - dice_score.mean()
 
 
-train_transforms = v2.Compose([
-        v2.RandomRotation(degrees=15),
-        v2.RandomVerticalFlip(p=0.5),
-        v2.RandomHorizontalFlip(p=0.5),
-        v2.ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2, hue=0.1),
-        v2.ToImage(),
-        v2.ToDtype(torch.float32, scale=True)
-    ])
+sync_transforms = v2.Compose([
+    v2.RandomRotation(degrees=15),
+    v2.RandomVerticalFlip(p=0.5),
+    v2.RandomHorizontalFlip(p=0.5),
+])
+
+image_transforms = v2.Compose([
+    v2.ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2, hue=0.1),
+    v2.ToDtype(torch.float32, scale=True)
+])
 
 def get_dataloader(batch_size: int = 16):
-    dataset = MoNuSegDataset(transform=train_transforms)
-    dataloader = torch.utils.data.DataLoader(dataset, batch_size=batch_size, shuffle=True)
+    dataset = MoNuSegDataset()
+    dataloader = torch.utils.data.DataLoader(dataset, num_workers=8, batch_size=batch_size, shuffle=True, pin_memory=True)
     return dataloader
 
 dataloader = get_dataloader()
@@ -193,18 +195,23 @@ if __name__ == "__main__":
     for epoch in range(NUM_EPOCHS):
         model.train()
         metric = Accumulator(2)
-        for images, masks in tqdm(dataloader):
-            images, masks = images.to(device), masks.to(device)
-            with torch.amp.autocast('cuda'):
-                targets = torch.argmax(masks, dim=1)  # Assuming masks are one-hot encoded
-                outputs = model(images)
+        for images, labels in tqdm(dataloader):
+            images, labels = images.to(device), labels.to(device)
+            images, labels = sync_transforms(images, labels)
+            images = image_transforms(images)
+            labels = labels.squeeze(1).long()  # Convert (B, 1, H, W) to (B, H, W) for loss calculation
             
+            optimizer.zero_grad()
+            with torch.amp.autocast('cuda'):
+                # Assuming labels are already class indices
+                outputs = model(images)
                 if isinstance(outputs, tuple):
-                    loss = sum((criterion_CE(out, targets) + criterion_Dice(out, targets)) for out in outputs) / len(outputs)
+                    # out: (B, 3, H, W)
+                    # labels: (B, H, W)
+                    loss = sum((criterion_CE(out, labels) + criterion_Dice(out, labels)) for out in outputs) / len(outputs)
                 else:
-                    loss = criterion_CE(outputs, targets) + criterion_Dice(outputs, targets)
+                    loss = criterion_CE(outputs, labels) + criterion_Dice(outputs, labels)
 
-                optimizer.zero_grad()
             scaler.scale(loss).backward()
             scaler.step(optimizer)
             scaler.update()
