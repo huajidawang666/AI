@@ -201,4 +201,3 @@ if __name__ == "__main__":
         pred_mask = F.one_hot(indices, num_classes=3) * 255.0
         cv2.imwrite(str(config.DATA_DIR / 'TCGA-18-5592-01Z-00-DX1_0_0_pred.png'), pred_mask.astype('uint8') * 255)
     
-    
