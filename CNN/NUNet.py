@@ -191,7 +191,7 @@ dataloader = get_dataloader()
 if __name__ == "__main__":
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     
-    model = NestedUNet(in_channels=3, num_classes=3, deep_supervision=False, norm='gn')
+    model = NestedUNet(in_channels=3, num_classes=3, deep_supervision=True, norm='gn')
     model.to(device)
     torch.compile(model)
     
@@ -224,12 +224,12 @@ if __name__ == "__main__":
                     # labels: (B, H, W)
                     loss_ce = sum(criterion_CE(out, labels) for out in outputs) / len(outputs)
                     loss_dice = sum(criterion_Dice(out, labels) for out in outputs) / len(outputs)
-                    loss = loss_ce + loss_dice
+                    loss = 0.4 * loss_ce + 0.6 * loss_dice
                     
                 else:
                     loss_ce = criterion_CE(outputs, labels)
                     loss_dice = criterion_Dice(outputs, labels)
-                    loss = loss_ce + loss_dice
+                    loss = 0.4 * loss_ce + 0.6 * loss_dice
 
             scaler.scale(loss).backward()
             
