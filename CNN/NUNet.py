@@ -228,14 +228,15 @@ if __name__ == "__main__":
 
             # scaler.scale(loss).backward()
             
+            loss.backward()
             # scaler.unscale_(optimizer)
+            
             # print grad
             for name, param in model.named_parameters():
                 if param.grad is not None:
                     print(f"{name}: grad norm = {param.grad.norm().item():.4f}")
             torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
             
-            loss.backward()
             optimizer.step()
             
             # scaler.step(optimizer)
