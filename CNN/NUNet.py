@@ -100,9 +100,17 @@ class NestedUNet(nn.Module):
         self.final4 = nn.Conv2d(f0, num_classes, kernel_size=1)
 
         self.pool = nn.MaxPool2d(2, 2)
-
+        self._init_weights()
+        
     def _up(self, x: torch.Tensor, target: torch.Tensor) -> torch.Tensor:
         return F.interpolate(x, size=target.shape[2:], mode="bilinear", align_corners=False)
+
+    def _init_weights(self):
+        for m in self.modules():
+            if isinstance(m, nn.Conv2d):
+                nn.init.kaiming_normal_(m.weight)
+                if m.bias is not None:
+                    nn.init.zeros_(m.bias)
 
     def forward(self, x: torch.Tensor) -> Union[torch.Tensor, Tuple[torch.Tensor, ...]]:
         # Encoder
