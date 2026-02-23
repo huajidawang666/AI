@@ -106,7 +106,7 @@ class RSU(nn.Module):
                                            size=enc_feats[0].shape[2:],
                                            mode='bilinear',
                                            align_corners=False) # ?
-        hidden = self.ReBNConvOut(hidden)
+        hidden = self.ReBNConvOut(torch.cat([hidden, enc_feats[0]], dim=1))
         
         return hidden + hidden_x # Residual Connection
     
@@ -298,7 +298,7 @@ if __name__ == "__main__":
     model.to(device)
     torch.compile(model)
     
-    criterion_BCE = bce_loss()
+    criterion_BCE = bce_loss
     criterion_Dice = DiceLoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=3e-4)
     lr_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=NUM_EPOCHS)
