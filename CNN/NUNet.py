@@ -202,6 +202,12 @@ if __name__ == "__main__":
     lr_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=NUM_EPOCHS)
     scaler = torch.amp.GradScaler('cuda')
     
+    # save model
+    # Create a directory with a timestamp
+    timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
+    save_dir = config.LOG_DIR / 'NUNet-MoNuSeg' / timestamp
+    save_dir.mkdir(parents=True, exist_ok=True)
+    
     for epoch in range(NUM_EPOCHS):
         model.train()
         metric = Accumulator(3)
@@ -249,15 +255,12 @@ if __name__ == "__main__":
             
             with torch.no_grad():
                 metric.add(loss_ce.item() * images.size(0), loss_dice.item() * images.size(0), images.size(0))
-                
+    
         lr_scheduler.step()
         print(f"Epoch {epoch+1}, CE Loss: {metric[0] / metric[2]:.4f}, Dice Loss: {metric[1] / metric[2]:.4f}")
     
-    # save model
-    # Create a directory with a timestamp
-    timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
-    save_dir = config.LOG_DIR / 'NUNet-MoNuSeg' / timestamp
-    save_dir.mkdir(parents=True, exist_ok=True)
+        if epoch % 5 == 0:
+            torch.save(model.state_dict(), save_dir / f"nested_unet_epoch_{epoch+1}.pth")
     
     torch.save(model.state_dict(), save_dir / "nested_unet.pth")
     torch.save(model.state_dict(), config.LOG_DIR / 'NUNet-MoNuSeg' / "latest.pth")
