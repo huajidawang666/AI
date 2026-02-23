@@ -2,3 +2,4 @@
 /logs/
 .vscode/
 __pycache__/
+*.ipynb
