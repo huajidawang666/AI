@@ -21,6 +21,7 @@ import cv2
 from torch import nn
 from datetime import datetime
 import torch.nn.functional as F
+from torchvision import tv_tensors
 
 NUM_EPOCHS = 50
 
@@ -206,6 +207,10 @@ if __name__ == "__main__":
         metric = Accumulator(3)
         for images, labels in tqdm(dataloader):
             images, labels = images.to(device), labels.to(device)
+            
+            images = tv_tensors.Image(images)
+            labels = tv_tensors.Mask(labels)
+            
             images, labels = sync_transforms(images, labels)
             images = image_transforms(images)
             labels = labels.squeeze(1).long()  # Convert (B, 1, H, W) to (B, H, W) for loss calculation
