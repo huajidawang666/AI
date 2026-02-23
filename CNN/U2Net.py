@@ -319,7 +319,6 @@ if __name__ == "__main__":
             
             images, labels = sync_transforms(images, labels)
             images = image_transforms(images)
-            labels = labels.squeeze(1).long()  # Convert (B, 1, H, W) to (B, H, W) for loss calculation
             
             optimizer.zero_grad()
             with torch.amp.autocast('cuda'):
