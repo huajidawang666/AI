@@ -18,7 +18,6 @@ class ConvBNReLU(nn.Module):
                  in_channels,
                  out_channels,
                  kernel_size=3,
-                 stride=1,
                  padding=1,
                  dialation=1):
         super().__init__()
@@ -26,10 +25,9 @@ class ConvBNReLU(nn.Module):
             nn.Conv2d(in_channels,
                       out_channels,
                       kernel_size,
-                      stride,
-                      padding * dialation,
-                      dialation,
-                      bias = False),
+                      padding=padding * dialation,
+                      dilation=dialation,
+                      bias=False),
             nn.BatchNorm2d(out_channels),
             nn.ReLU(inplace=True)
         )
@@ -114,13 +112,13 @@ class RSU4F(nn.Module):
     def __init__(self, in_channels, mid_channels, out_channels):
         super().__init__()
         self.ReBNConvIn = ConvBNReLU(in_channels, out_channels)
-        self.ReBNConvE1 = ConvBNReLU(out_channels, mid_channels)
+        self.ReBNConvE1 = ConvBNReLU(out_channels, mid_channels, dialation=1, padding=1)
         self.ReBNConvE2 = ConvBNReLU(mid_channels, mid_channels, dialation=2, padding=2)
         self.ReBNConvE3 = ConvBNReLU(mid_channels, mid_channels, dialation=4, padding=4)
         self.ReBNConvE4 = ConvBNReLU(mid_channels, mid_channels, dialation=8, padding=8)
         self.ReBNConvD3 = ConvBNReLU(mid_channels * 2, mid_channels, dialation=4, padding=4)
         self.ReBNConvD2 = ConvBNReLU(mid_channels * 2, mid_channels, dialation=2, padding=2)
-        self.ReBNConvOut = ConvBNReLU(mid_channels * 2, out_channels)
+        self.ReBNConvOut = ConvBNReLU(mid_channels * 2, out_channels, dialation=1, padding=1)
         
     def forward(self, x):
         hidden_x = self.ReBNConvIn(x)
