@@ -216,36 +216,36 @@ if __name__ == "__main__":
             labels = labels.squeeze(1).long()  # Convert (B, 1, H, W) to (B, H, W) for loss calculation
             
             optimizer.zero_grad()
-            # with torch.amp.autocast('cuda'):
-            # Assuming labels are already class indices
-            outputs = model(images)
-            if isinstance(outputs, tuple):
-                # out: (B, 3, H, W)
-                # labels: (B, H, W)
-                loss_ce = sum(criterion_CE(out, labels) for out in outputs) / len(outputs)
-                loss_dice = sum(criterion_Dice(out, labels) for out in outputs) / len(outputs)
-                loss = loss_ce + loss_dice
-                
-            else:
-                loss_ce = criterion_CE(outputs, labels)
-                loss_dice = criterion_Dice(outputs, labels)
-                loss = loss_ce + loss_dice
+            with torch.amp.autocast('cuda'):
+                # Assuming labels are already class indices
+                outputs = model(images)
+                if isinstance(outputs, tuple):
+                    # out: (B, 3, H, W)
+                    # labels: (B, H, W)
+                    loss_ce = sum(criterion_CE(out, labels) for out in outputs) / len(outputs)
+                    loss_dice = sum(criterion_Dice(out, labels) for out in outputs) / len(outputs)
+                    loss = loss_ce + loss_dice
+                    
+                else:
+                    loss_ce = criterion_CE(outputs, labels)
+                    loss_dice = criterion_Dice(outputs, labels)
+                    loss = loss_ce + loss_dice
 
-            # scaler.scale(loss).backward()
+            scaler.scale(loss).backward()
             
-            loss.backward()
-            # scaler.unscale_(optimizer)
+            # loss.backward()
+            scaler.unscale_(optimizer)
             
-            # print grad
-            for name, param in model.named_parameters():
-                if param.grad is not None:
-                    print(f"{name}: grad norm = {param.grad.norm().item():.4f}")
+            # # print grad
+            # for name, param in model.named_parameters():
+            #     if param.grad is not None:
+            #         print(f"{name}: grad norm = {param.grad.norm().item():.4f}")
             torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
             
-            optimizer.step()
+            # optimizer.step()
             
-            # scaler.step(optimizer)
-            # scaler.update()
+            scaler.step(optimizer)
+            scaler.update()
             
             with torch.no_grad():
                 metric.add(loss_ce.item() * images.size(0), loss_dice.item() * images.size(0), images.size(0))
