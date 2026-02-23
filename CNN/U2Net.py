@@ -367,7 +367,7 @@ if __name__ == "__main__":
         image = image_transforms(image_tensor).unsqueeze(0).to(device)  # Add batch dimension
         output = model(image)
         output = output[0] if isinstance(output, tuple) else output  # Use first output if deep supervision
-        indices = (torch.sigmoid(output) > 0.5).long().squeeze(0)  # Convert to binary mask and remove batch dimension
+        indices = (torch.sigmoid(output) > 0.5).permute(1, 2, 0).long().squeeze(0)  # Convert to binary mask and remove batch dimension
         pred_mask = indices.cpu().numpy().astype('uint8') * 255  # Scale to [0, 255] for visualization
         cv2.imwrite(str(config.DATA_DIR / 'TCGA-18-5592-01Z-00-DX1_0_0_pred.png'), pred_mask)
     
