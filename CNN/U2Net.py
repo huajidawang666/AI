@@ -184,7 +184,7 @@ class U2Net(nn.Module):
         self.side6 = SideHead(512, out_channels)
         
         # Fusion
-        self.outconv = nn.Conv2d(6 * out_channels, out_channels)
+        self.outconv = nn.Conv2d(6 * out_channels, out_channels, kernel_size=1)
     
         # Init Weights
         self._init_weights()
