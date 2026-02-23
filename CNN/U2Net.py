@@ -319,14 +319,24 @@ if __name__ == "__main__":
             
             images, labels = sync_transforms(images, labels)
             images = image_transforms(images)
+            labels = labels.float()
             
             optimizer.zero_grad()
             with torch.amp.autocast('cuda'):
                 # Assuming labels are already class indices
                 outputs = model(images)
-                loss_ce = criterion_BCE(outputs, labels)
-                loss_dice = criterion_Dice(outputs, labels)
-                loss = 0.4 * loss_ce + 0.6 * loss_dice
+                if isinstance(outputs, tuple):
+                    # out: (B, 1, H, W)
+                    # labels: (B, 1，H, W)
+                    print(outputs[0].shape, labels.shape)
+                    loss_ce = sum(criterion_BCE(out, labels) for out in outputs) / len(outputs)
+                    loss_dice = sum(criterion_Dice(out, labels) for out in outputs) / len(outputs)
+                    loss = 0.4 * loss_ce + 0.6 * loss_dice
+                    
+                else:
+                    loss_ce = criterion_BCE(outputs, labels)
+                    loss_dice = criterion_Dice(outputs, labels)
+                    loss = 0.4 * loss_ce + 0.6 * loss_dice
 
             scaler.scale(loss).backward()
             
