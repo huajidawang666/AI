@@ -172,7 +172,7 @@ image_transforms = v2.Compose([
     v2.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
 ])
 
-def get_dataloader(batch_size: int = 32):
+def get_dataloader(batch_size: int = 24):
     dataset = MoNuSegDataset()
     dataloader = torch.utils.data.DataLoader(dataset, num_workers=8, batch_size=batch_size, shuffle=True, pin_memory=True)
     return dataloader
@@ -189,7 +189,7 @@ if __name__ == "__main__":
     weights = torch.tensor([5.0, 2.0, 1.0]).to(device)
     criterion_CE = nn.CrossEntropyLoss(weight=weights)
     criterion_Dice = DiceLoss()
-    optimizer = torch.optim.Adam(model.parameters(), lr=5e-2)
+    optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
     lr_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=NUM_EPOCHS)
     scaler = torch.amp.GradScaler('cuda')
     
@@ -219,10 +219,12 @@ if __name__ == "__main__":
                     loss = loss_ce + loss_dice
 
             scaler.scale(loss).backward()
+            scaler.unscale_(optimizer)
             # print grad
             for name, param in model.named_parameters():
                 if param.grad is not None:
                     print(f"{name}: grad norm = {param.grad.norm().item():.4f}")
+            torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
             scaler.step(optimizer)
             scaler.update()
             
