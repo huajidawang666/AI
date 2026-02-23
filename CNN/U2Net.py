@@ -320,7 +320,6 @@ if __name__ == "__main__":
                 if isinstance(outputs, tuple):
                     # out: (B, 1, H, W)
                     # labels: (B, 1，H, W)
-                    print(outputs[0].shape, labels.shape)
                     loss_ce = sum(criterion_BCE(out, labels) for out in outputs) / len(outputs)
                     loss_dice = sum(criterion_Dice(out, labels) for out in outputs) / len(outputs)
                     loss = 0.4 * loss_ce + 0.6 * loss_dice
