@@ -203,9 +203,9 @@ class U2Net(nn.Module):
         hx1 = self.enc1(x)
         hx2 = self.enc2(self.pool1(hx1))
         hx3 = self.enc3(self.pool2(hx2))
-        hx4 = self.enc3(self.pool3(hx3))
-        hx5 = self.enc3(self.pool4(hx4))
-        hx6 = self.enc3(self.pool5(hx5))
+        hx4 = self.enc4(self.pool3(hx3))
+        hx5 = self.enc5(self.pool4(hx4))
+        hx6 = self.enc6(self.pool5(hx5))
         
         # Decoder
         hx6up = nn.functional.interpolate(hx6, size=hx5.shape[2:], mode='bilinear', align_corners=False)
