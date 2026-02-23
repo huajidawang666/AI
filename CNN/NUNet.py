@@ -182,7 +182,7 @@ dataloader = get_dataloader()
 if __name__ == "__main__":
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     
-    model = NestedUNet(in_channels=3, num_classes=3, deep_supervision=True, norm='gn')
+    model = NestedUNet(in_channels=3, num_classes=3, deep_supervision=False, norm='gn')
     model.to(device)
     torch.compile(model)
     
@@ -190,7 +190,7 @@ if __name__ == "__main__":
     criterion_CE = nn.CrossEntropyLoss(weight=weights)
     criterion_Dice = DiceLoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=5e-2)
-    lr_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=NUM_EPOCHS * len(dataloader) // 2)
+    lr_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=NUM_EPOCHS)
     scaler = torch.amp.GradScaler('cuda')
     
     for epoch in range(NUM_EPOCHS):
@@ -219,14 +219,17 @@ if __name__ == "__main__":
                     loss = loss_ce + loss_dice
 
             scaler.scale(loss).backward()
+            # print grad
+            for name, param in model.named_parameters():
+                if param.grad is not None:
+                    print(f"{name}: grad norm = {param.grad.norm().item():.4f}")
             scaler.step(optimizer)
             scaler.update()
-            lr_scheduler.step()
             
             with torch.no_grad():
                 metric.add(loss_ce.item() * images.size(0), loss_dice.item() * images.size(0), images.size(0))
                 
-            
+        lr_scheduler.step()
         print(f"Epoch {epoch+1}, CE Loss: {metric[0] / metric[2]:.4f}, Dice Loss: {metric[1] / metric[2]:.4f}")
     
     # save model
