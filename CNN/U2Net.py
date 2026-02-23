@@ -324,17 +324,9 @@ if __name__ == "__main__":
             with torch.amp.autocast('cuda'):
                 # Assuming labels are already class indices
                 outputs = model(images)
-                if isinstance(outputs, tuple):
-                    # out: (B, 3, H, W)
-                    # labels: (B, H, W)
-                    loss_ce = sum(criterion_BCE(out, labels) for out in outputs) / len(outputs)
-                    loss_dice = sum(criterion_Dice(out, labels) for out in outputs) / len(outputs)
-                    loss = 0.4 * loss_ce + 0.6 * loss_dice
-                    
-                else:
-                    loss_ce = criterion_BCE(outputs, labels)
-                    loss_dice = criterion_Dice(outputs, labels)
-                    loss = 0.4 * loss_ce + 0.6 * loss_dice
+                loss_ce = criterion_BCE(outputs, labels)
+                loss_dice = criterion_Dice(outputs, labels)
+                loss = 0.4 * loss_ce + 0.6 * loss_dice
 
             scaler.scale(loss).backward()
             
