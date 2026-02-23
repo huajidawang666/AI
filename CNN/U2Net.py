@@ -244,7 +244,7 @@ class U2Net(nn.Module):
         )
         
 def bce_loss(pred, target):
-    return nn.functional.binary_cross_entropy(pred, target, 'mean')
+    return nn.functional.binary_cross_entropy(pred, target, reduction='mean')
 
 class DiceLoss(nn.Module):
     def __init__(self, smooth=1e-6):
