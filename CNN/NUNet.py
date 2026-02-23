@@ -195,7 +195,7 @@ if __name__ == "__main__":
     model.to(device)
     torch.compile(model)
     
-    weights = torch.tensor([5.0, 2.0, 1.0]).to(device)
+    weights = torch.tensor([2.5, 1.0, 1.0]).to(device)
     criterion_CE = nn.CrossEntropyLoss(weight=weights)
     criterion_Dice = DiceLoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=3e-4)
