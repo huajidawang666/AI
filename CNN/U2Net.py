@@ -369,6 +369,5 @@ if __name__ == "__main__":
         output = output[0] if isinstance(output, tuple) else output  # Use first output if deep supervision
         indices = (torch.sigmoid(output) > 0.5).long().squeeze(0)  # Convert to binary mask and remove batch dimension
         pred_mask = indices.cpu().numpy().astype('uint8') * 255  # Scale to [0, 255] for visualization
-        final_mask = cv2.cvtColor(pred_mask, cv2.COLOR_RGB2BGR)  # Convert back to BGR for saving
-        cv2.imwrite(str(config.DATA_DIR / 'TCGA-18-5592-01Z-00-DX1_0_0_pred.png'), final_mask)
+        cv2.imwrite(str(config.DATA_DIR / 'TCGA-18-5592-01Z-00-DX1_0_0_pred.png'), pred_mask)
     
