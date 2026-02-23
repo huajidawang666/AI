@@ -25,7 +25,7 @@ class ConvBNReLU(nn.Module):
             nn.Conv2d(in_channels,
                       out_channels,
                       kernel_size,
-                      padding=padding * dialation,
+                      padding=padding,
                       dilation=dialation,
                       bias=False),
             nn.BatchNorm2d(out_channels),
