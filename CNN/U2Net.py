@@ -233,18 +233,10 @@ class U2Net(nn.Module):
         d0 = self.outconv(torch.cat([d1, d2, d3, d4, d5, d6], dim=1))
 
         
-        return (
-            torch.sigmoid(d0),
-            torch.sigmoid(d1),
-            torch.sigmoid(d2),
-            torch.sigmoid(d3),
-            torch.sigmoid(d4),
-            torch.sigmoid(d5),
-            torch.sigmoid(d6),
-        )
+        return d0, d1, d2, d3, d4, d5, d6
         
 def bce_loss(pred, target):
-    return nn.functional.binary_cross_entropy(pred, target, reduction='mean')
+    return nn.functional.binary_cross_entropy_with_logits(pred, target, reduction='mean') # safe to autocast
 
 class DiceLoss(nn.Module):
     def __init__(self, smooth=1e-6):
