@@ -1,4 +1,3 @@
-from typing import Tuple, Union
 from torchvision.transforms import v2
 from tqdm import tqdm
 from dataset.MoNuSeg import MoNuSegDataset
@@ -305,7 +304,8 @@ if __name__ == "__main__":
         metric = Accumulator(3)
         for images, labels in tqdm(dataloader):
             images, labels = images.to(device), labels.to(device)
-            labels -= (labels == 2).int()
+            labels[labels == 0] = 1
+            labels[labels == 2] = 0
             images = tv_tensors.Image(images)
             labels = tv_tensors.Mask(labels)
             
@@ -367,7 +367,7 @@ if __name__ == "__main__":
         image = image_transforms(image_tensor).unsqueeze(0).to(device)  # Add batch dimension
         output = model(image)
         output = output[0] if isinstance(output, tuple) else output  # Use first output if deep supervision
-        indices = (torch.sigmoid(output) > 0.5).permute(1, 2, 0).long().squeeze(0)  # Convert to binary mask and remove batch dimension
-        pred_mask = indices.cpu().numpy().astype('uint8') * 255  # Scale to [0, 255] for visualization
+        indices = (torch.sigmoid(output)).permute(0, 2, 3, 1).squeeze(0)  # Convert to binary mask and remove batch dimension
+        pred_mask = (indices.cpu().numpy() * 255).astype('uint8')  # Scale to [0, 255] for visualization
         cv2.imwrite(str(config.DATA_DIR / 'TCGA-18-5592-01Z-00-DX1_0_0_pred.png'), pred_mask)
     
